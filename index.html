@@ -8,6 +8,52 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- removed html2canvas/jsPDF: printing will use browser Print (single-page report) -->
     <style>
+      /* Sea-blue theme variables */
+      :root{
+        --sea-900: #003f5c;
+        --sea-800: #01445a;
+        --sea-700: #04607a;
+        --sea-600: #0ea5b7;
+        --sea-500: #06b6d4;
+        --sea-300: #9feaf6;
+        --sea-100: #e6fbfe;
+        --muted: rgba(3,37,47,0.62);
+      }
+
+      /* Page background and base text */
+      body {
+        background: linear-gradient(180deg, var(--sea-50, #f6fdfe) 0%, #ffffff 60%);
+        -webkit-font-smoothing:antialiased;
+        color: var(--sea-900);
+      }
+
+      /* Logo box uses sea gradient */
+      .logo-box { background: linear-gradient(135deg, var(--sea-600), var(--sea-500)); }
+
+      header h1 { color: var(--sea-900); }
+      header p { color: var(--muted); }
+
+      /* Cards and panels: subtle sea tint and better contrast */
+      #app-root .bg-white { background: linear-gradient(180deg,#ffffff, var(--sea-100)); border: 1px solid rgba(6,182,212,0.06); }
+      .rounded-xl { box-shadow: 0 6px 20px rgba(6,100,120,0.05); }
+      .p-5 { color: var(--sea-900); }
+      .card-title { color: var(--sea-700); font-weight:700; }
+
+      /* Primary buttons adopt sea colors */
+      .sea-primary, #calc-btn, #save-month, #print-btn { background: linear-gradient(135deg,var(--sea-700),var(--sea-600)); color: #fff !important; border-color: transparent !important; }
+      #calc-btn:hover, #save-month:hover, #print-btn:hover { filter: brightness(1.05); }
+      .no-print button { border: 1px solid rgba(6,182,212,0.12); }
+
+      /* Improve table readability */
+      table th { background: transparent; color: var(--sea-700); font-weight:700; }
+      table td { color: rgba(2,32,45,0.95); }
+
+      /* Tighter form labels and inputs for visibility */
+      label.block { color: var(--sea-800); font-weight:600; }
+      input, select { border-color: rgba(4,64,80,0.06); }
+
+      footer { color: var(--muted); }
+
       /* Print: hide the app UI and show only the generated report (#print-report) */
       @media print {
         .no-print { display: none !important; }
@@ -17,8 +63,10 @@
         #print-report, #print-report * { visibility: visible !important; }
         /* position report at top-left for printing */
         #print-report { position: absolute; left: 0; top: 0; width: 100%; }
+        /* ensure high contrast for printed report */
+        #print-report { color: #04202b !important; background: #fff !important; }
+        #print-report table th { color: #04202b !important; }
       }
-      body { -webkit-font-smoothing:antialiased; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-sky-50 via-white to-gray-50 text-gray-900 p-6">
@@ -27,7 +75,7 @@
       <div id="print-report" style="display:none"></div>
       <header class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-400 text-white rounded-lg flex items-center justify-center shadow-lg">
+          <div class="w-12 h-12 logo-box text-white rounded-lg flex items-center justify-center shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
           </div>
           <div>
