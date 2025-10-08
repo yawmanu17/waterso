@@ -3,32 +3,42 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>PowerSo WaterBill — Track Your Water & Sewer</title>
+    <title>WaterBill — Track Your Water & Sewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- removed html2canvas/jsPDF: printing will use browser Print (single-page report) -->
     <style>
-      @media print { .no-print{ display:none !important } }
+      /* Print: hide the app UI and show only the generated report (#print-report) */
+      @media print {
+        .no-print { display: none !important; }
+        /* hide everything by default */
+        body * { visibility: hidden !important; }
+        /* show print-report container and its descendants */
+        #print-report, #print-report * { visibility: visible !important; }
+        /* position report at top-left for printing */
+        #print-report { position: absolute; left: 0; top: 0; width: 100%; }
+      }
       body { -webkit-font-smoothing:antialiased; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-sky-50 via-white to-gray-50 text-gray-900 p-6">
     <div class="max-w-6xl mx-auto">
+      <!-- hidden print container; populated by printReport() and displayed only during print -->
+      <div id="print-report" style="display:none"></div>
       <header class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-400 text-white rounded-lg flex items-center justify-center shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold">PowerSo WaterBill</h1>
+            <h1 class="text-2xl font-bold">EASOM-Water Bill</h1>
             <p class="text-sm text-gray-600">Monthly usage, yearly analysis & comparison</p>
+            <!-- Name chosen: EASOM (from Solomon/Elizabeth/Andrew) -->
           </div>
         </div>
 
         <div class="flex items-center gap-2 no-print">
-          <button id="print-btn" class="px-3 py-2 bg-white border rounded">Print</button>
-          <button id="export-pdf" class="px-3 py-2 bg-indigo-600 text-white rounded shadow">Export PDF</button>
+          <button id="print-btn" class="px-3 py-2 bg-white border rounded">Print / Save as PDF</button>
         </div>
       </header>
 
@@ -260,9 +270,8 @@
   const waterModeTiered = $('water-mode-tiered');
   const waterRateContainer = $('water-rate-container');
   const utilityTaxEl = $('utility-tax');
-      const recordsBody = $('records-body');
-      const exportPdfBtn = $('export-pdf');
-      const printBtn = $('print-btn');
+  const recordsBody = $('records-body');
+  const printBtn = $('print-btn');
 
       const resultCcf = $('result-ccf');
       const resultGal = $('result-gal');
@@ -586,76 +595,141 @@
       }
 
 
-      async function exportPdf(){
+      // inline print report - populate hidden #print-report and call window.print()
+      function printReport(){
+        const calc = calculateCharges();
+        const container = document.getElementById('print-report');
+        if(!container) return window.print();
+        const selMonth = billingMonthEl.value || new Date().toISOString().slice(0,7);
+        // prefer selected year for yearly summary; fallback to record year or current year
+        const selectedYear = (yearSelect && yearSelect.value && yearSelect.value !== 'all') ? yearSelect.value : new Date().getFullYear().toString();
+        const thisYear = aggregateYear(selectedYear);
+        const prevYear = aggregateYear((Number(selectedYear)-1).toString());
+        const pctChange = (prevYear.totalCost && prevYear.totalCost>0) ? ((thisYear.totalCost - prevYear.totalCost)/prevYear.totalCost)*100 : null;
+
+        // build HTML with structured tables and a numeric monthly summary (no page snapshot image)
+        let monthTable = '';
         try{
-          if(typeof html2canvas==='undefined' || !window.jspdf) return window.print();
-          // build a clean report node
-          const state = loadState();
-          const report = document.createElement('div');
-          report.style.width = '800px';
-          report.style.padding = '20px';
-          report.style.background = 'white';
-          report.style.color = '#111';
-          report.style.fontFamily = 'Arial, Helvetica, sans-serif';
+          const s = loadState();
+          const monthsLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const monthsKeys = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+          const gallonsByMonth = new Array(12).fill(0);
+          const totalByMonth = new Array(12).fill(0);
+          const waterByMonth = new Array(12).fill(0);
+          (s.records||[]).forEach(r=>{ if(r.month && r.month.slice(0,4)===selectedYear){ const m = r.month.slice(5,7); const idx = monthsKeys.indexOf(m); if(idx>=0){ gallonsByMonth[idx] += Number(r.gallons||0); totalByMonth[idx] += Number(r.total||0); waterByMonth[idx] += Number(r.waterCharge||0); } } });
+          // build table rows only for months that have data or show full 12 rows (zeros allowed)
+          monthTable = `<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">Monthly Summary (${selectedYear})</div><table style="width:100%;border-collapse:collapse;font-size:12px"><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Gallons</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Water $</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Total $</th></tr>`;
+          for(let i=0;i<12;i++){ monthTable += `<tr><td style="padding:6px;border-bottom:1px solid #f3f3f3">${monthsLabels[i]}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${Number(gallonsByMonth[i]).toLocaleString()}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${toMoney(waterByMonth[i])}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${toMoney(totalByMonth[i])}</td></tr>`; }
+          monthTable += '</table></div>';
+        }catch(e){ monthTable = ''; }
 
-          const header = document.createElement('div');
-          header.innerHTML = `<h2 style="margin:0 0 6px 0">PowerSo WaterBill Report</h2><div style="font-size:12px;color:#555">${addressEl.value || ''} ${meterEl.value ? '• Meter: '+meterEl.value:''}</div><hr style="margin:10px 0">`;
-          report.appendChild(header);
-
-          const selMonth = billingMonthEl.value || new Date().toISOString().slice(0,7);
-          const details = document.createElement('div');
-          details.style.marginBottom = '10px';
-          const calc = calculateCharges();
-          details.innerHTML = `<div><strong>Billing Month:</strong> ${selMonth}</div><div><strong>Last Read:</strong> ${lastReadEl.value || 'N/A'} (${lastReadDateEl.value || ''})</div><div><strong>Current Read:</strong> ${currentReadEl.value || 'N/A'} (${currentReadDateEl.value || ''})</div>`;
-          report.appendChild(details);
-
-          const table = document.createElement('table');
-          table.style.width='100%';
-          table.style.borderCollapse='collapse';
-          table.innerHTML = `
-            <tr><td style="padding:6px;border-bottom:1px solid #eee">CCF Used</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${calc.ccf.toFixed(2)}</td></tr>
-            <tr><td style="padding:6px;border-bottom:1px solid #eee">Gallons</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${calc.gallons.toLocaleString()}</td></tr>
-            <tr><td style="padding:6px;border-bottom:1px solid #eee">Water Charge (${calc.mode})</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.waterCharge)}</td></tr>
-            <tr><td style="padding:6px;border-bottom:1px solid #eee">Sewer Charge</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.sewerCharge)}</td></tr>
-            <tr><td style="padding:6px;border-bottom:1px solid #eee">Utility Tax</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.taxAmount || 0)}</td></tr>
-            <tr><td style="padding:6px;font-weight:bold">Total</td><td style="padding:6px;font-weight:bold;text-align:right">${toMoney(calc.total)}</td></tr>
-          `;
-          report.appendChild(table);
-
-          // include tier breakdown
-          if(calc.breakdown && calc.breakdown.length){
-            const bd = document.createElement('div'); bd.style.marginTop='10px'; bd.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:6px">Water Charge Breakdown</div>';
-            const btable = document.createElement('table'); btable.style.width='100%'; btable.style.borderCollapse='collapse';
-            btable.innerHTML = `<tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Tier</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Usage CCF</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Rate</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Cost</th></tr>`;
-            calc.breakdown.forEach(b=>{ btable.innerHTML += `<tr><td style="padding:6px;border-bottom:1px solid #eee">${b.label}${b.limit? ' ≤ '+b.limit:''}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${b.usage.toFixed(2)}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(b.rate)}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(b.cost)}</td></tr>` });
-            bd.appendChild(btable); report.appendChild(bd);
-          }
-
-          // include chart snapshot if present
-            const chartCanvas = document.getElementById('trend-chart');
-            if(chartCanvas){
-              const chartClone = document.createElement('div');
-              chartClone.style.marginTop = '12px';
-              chartClone.innerHTML = '<div style="font-size:12px;color:#555;margin-bottom:6px">Trend</div>';
-              report.appendChild(chartClone);
-              const chartImg = chartCanvas.toDataURL('image/png');
-              const img = new Image(); img.src = chartImg; img.style.maxWidth = '100%'; img.style.marginTop = '6px'; report.appendChild(img);
+        document.title = `EASOM-Water Bill_${selMonth}`;
+        container.innerHTML = '';
+        container.style.display = 'block';
+        container.style.padding = '18px';
+        container.style.fontFamily = 'Arial, Helvetica, sans-serif';
+        container.style.color = '#111';
+        container.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <h2 style="margin:0;font-size:18px">EASOM - Water Bill</h2>
+              <div style="font-size:11px;color:#555">${addressEl.value||''}${meterEl.value? ' • Meter: '+meterEl.value:''}</div>
+            </div>
+            <div style="text-align:right;font-size:12px">${selMonth}</div>
+          </div>
+          <hr style="margin:8px 0">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:280px">
+              <h4 style="margin:0 0 8px 0">Inputs</h4>
+              <table style="width:100%;font-size:13px;border-collapse:collapse">
+                <tr><td style="padding:6px 8px;color:#333">Billing Month</td><td style="padding:6px 8px;text-align:right">${billingMonthEl.value || 'N/A'}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Last Read</td><td style="padding:6px 8px;text-align:right">${lastReadEl.value || 'N/A'} ${lastReadDateEl.value? '('+lastReadDateEl.value+')':''}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Current Read</td><td style="padding:6px 8px;text-align:right">${currentReadEl.value || 'N/A'} ${currentReadDateEl.value? '('+currentReadDateEl.value+')':''}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Water Base</td><td style="padding:6px 8px;text-align:right">${toMoney(waterBaseEl.value)}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Water Mode</td><td style="padding:6px 8px;text-align:right">${(waterModeTiered && waterModeTiered.checked)? 'Tiered' : 'Flat'}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Water Rate</td><td style="padding:6px 8px;text-align:right">${toMoney(waterRateEl.value)}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Utility Tax</td><td style="padding:6px 8px;text-align:right">${Number(utilityTaxEl.value || 0).toFixed(2)}%</td></tr>
+              </table>
+            </div>
+            <div style="flex:1;min-width:260px">
+              <h4 style="margin:0 0 8px 0">Results</h4>
+              <table style="width:100%;font-size:13px;border-collapse:collapse">
+                <tr><td style="padding:6px 8px;color:#333">CCF Used</td><td style="padding:6px 8px;text-align:right">${calc.ccf.toFixed(2)}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Gallons</td><td style="padding:6px 8px;text-align:right">${calc.gallons.toLocaleString()}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Water Charge</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.waterCharge)}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Sewer Charge</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.sewerCharge)}</td></tr>
+                <tr><td style="padding:6px 8px;color:#333">Utility Tax (water only)</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.taxAmount)}</td></tr>
+                <tr><td style="padding:6px 8px;font-weight:700">Total</td><td style="padding:6px 8px;font-weight:700;text-align:right">${toMoney(calc.total)}</td></tr>
+              </table>
+            </div>
+          </div>
+          ${monthTable}
+          <div style="margin-top:10px">
+            <h4 style="margin:6px 0">Yearly Summary — ${selectedYear}</h4>
+            <table style="width:100%;font-size:13px;border-collapse:collapse">
+              <tr><td style="padding:6px 8px;color:#333">Total Usage (CCF)</td><td style="padding:6px 8px;text-align:right">${thisYear.totalCcf.toFixed(2)}</td></tr>
+              <tr><td style="padding:6px 8px;color:#333">Months Recorded</td><td style="padding:6px 8px;text-align:right">${thisYear.months || 0}</td></tr>
+              <tr><td style="padding:6px 8px;color:#333">Total Cost</td><td style="padding:6px 8px;text-align:right">${toMoney(thisYear.totalCost)}</td></tr>
+              <tr><td style="padding:6px 8px;color:#333">Avg / month (CCF)</td><td style="padding:6px 8px;text-align:right">${thisYear.months? (thisYear.totalCcf/thisYear.months).toFixed(2) : '—'}</td></tr>
+              <tr><td style="padding:6px 8px;color:#333">Change vs ${Number(selectedYear)-1}</td><td style="padding:6px 8px;text-align:right">${pctChange==null? '—' : ((pctChange>=0?'+':'')+pctChange.toFixed(1)+'%')}</td></tr>
+            </table>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;align-items:center">
+            <div>Built by Solomon Ofori Manu — All rights reserved.</div>
+            <div style="font-size:11px;color:#666">EASOM</div>
+          </div>
+        `;
+        // inject robust print CSS and scale to fit a single A4 page before printing
+        let injectedStyle;
+        try{
+          const css = `
+            @page { size: A4; margin: 6mm }
+            @media print {
+              html, body { height: 100%; }
+              /* hide everything except our report */
+              body * { visibility: hidden !important; }
+              #print-report, #print-report * { visibility: visible !important; }
+              /* position report at the printable area */
+              #print-report { position: fixed !important; left: 6mm; top: 6mm; width: calc(210mm - 12mm) !important; box-sizing: border-box !important; }
+              /* avoid breaking tables across pages */
+              table { page-break-inside: avoid !important; }
+              /* slightly smaller print font to help fit on one page */
+              #print-report { font-size: 11px !important; line-height: 1.15 !important; }
+              h2, h4 { margin: 0 0 6px 0 !important; }
             }
+          `;
+          injectedStyle = document.getElementById('easom-print-style');
+          if(!injectedStyle){ injectedStyle = document.createElement('style'); injectedStyle.id = 'easom-print-style'; injectedStyle.type = 'text/css'; document.head.appendChild(injectedStyle); }
+          injectedStyle.innerHTML = css;
 
-          // render report to canvas and pdf
-          const canvas = await html2canvas(report, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
-          const imgData = canvas.toDataURL('image/png');
-          const { jsPDF } = window.jspdf;
-          // landscape single page fit
-          const pdf = new jsPDF({ unit:'pt', format:'a4', orientation: 'landscape' });
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const margin = 20;
-          const fitWidth = pdfWidth - margin*2;
-          const fitHeight = (canvas.height * fitWidth) / canvas.width;
-          pdf.addImage(imgData, 'PNG', margin, margin, fitWidth, Math.min(fitHeight, pdfHeight - margin*2));
-          pdf.save(`WaterBill_${selMonth}.pdf`);
-        }catch(e){ console.warn(e); window.print(); }
+          // approximate CSS pixels per millimeter (96dpi -> 96/25.4)
+          const pxPerMm = 96/25.4;
+          const pageWidthMm = 210; const pageHeightMm = 297; const marginMm = 6; // match @page margin
+          const availW = (pageWidthMm - marginMm*2) * pxPerMm;
+          const availH = (pageHeightMm - marginMm*2) * pxPerMm;
+          // set container width in mm so printed layout uses page width
+          container.style.width = (pageWidthMm - marginMm*2) + 'mm';
+          container.style.boxSizing = 'border-box';
+          // conservative reduce base font slightly to help fit
+          container.style.fontSize = '11px';
+          // measure content
+          const contentW = Math.max(1, container.scrollWidth);
+          const contentH = Math.max(1, container.scrollHeight);
+          const scaleW = availW / contentW;
+          const scaleH = availH / contentH;
+          const scale = Math.min(1, scaleW, scaleH);
+          container.style.transformOrigin = 'top left';
+          container.style.transform = `scale(${scale})`;
+        }catch(e){ /* ignore scaling problems and print normally */ }
+
+        // trigger print; hide the container after and remove transform and injected CSS
+        setTimeout(()=>{
+          try{ window.print(); }
+          finally{
+            try{ if(injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle); }catch(e){}
+            container.style.display='none'; container.style.transform=''; container.style.fontSize=''; container.style.width='';
+          }
+        }, 400);
       }
 
       // events
@@ -732,8 +806,7 @@
       sewerEnabledEl.addEventListener('change', ()=> { if(sewerEnabledEl.checked) sewerFields.classList.remove('hidden'); else sewerFields.classList.add('hidden'); });
   calcBtn.addEventListener('click', ()=> { calculateCharges(); updateChart(); });
   saveBtn.addEventListener('click', ()=>{ if(!validateAll()) return; saveMonth(); updateChart(); });
-      exportPdfBtn.addEventListener('click', exportPdf);
-      printBtn.addEventListener('click', ()=> window.print());
+  printBtn.addEventListener('click', ()=> printReport());
       yearSelect.addEventListener('change', updateYearSummary);
 
   (function init(){ const state = loadState(); if(state.address) addressEl.value = state.address; if(state.meter) meterEl.value = state.meter; renderRecords(); updateYearSelect(); autoCalculateReads(); refreshTierVisibility(); })();
