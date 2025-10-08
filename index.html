@@ -680,12 +680,10 @@
         }catch(e){ monthTable = ''; }
 
         document.title = `EASOM-Water Bill_${selMonth}`;
-        container.innerHTML = '';
-        container.style.display = 'block';
-        container.style.padding = '18px';
-        container.style.fontFamily = 'Arial, Helvetica, sans-serif';
-        container.style.color = '#111';
-        container.innerHTML = `
+        // build the report HTML in a variable. Do NOT inject into the page yet —
+        // popup flow will use this string directly. Only use container when
+        // falling back to inline printing.
+        const reportHtml = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <div>
               <h2 style="margin:0;font-size:18px">EASOM - Water Bill</h2>
@@ -748,7 +746,7 @@
             @media print { img { max-width:100%; } }
           `;
 
-          const printableHTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${document.title}</title><style>${printStyles}</style></head><body>${container.innerHTML}<script>window.onload=function(){ setTimeout(function(){ try{ window.print(); }catch(e){} try{ window.close(); }catch(e){} },250); };<\/script></body></html>`;
+          const printableHTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${document.title}</title><style>${printStyles}</style></head><body>${reportHtml}<script>window.onload=function(){ setTimeout(function(){ try{ window.print(); }catch(e){} try{ window.close(); }catch(e){} },250); };<\/script></body></html>`;
 
           const popup = window.open('', '_blank');
           if(popup && popup.document){
@@ -783,6 +781,12 @@
           const pageWidthMm = 210; const marginMm = 6;
           const availW = (pageWidthMm - marginMm*2) * pxPerMm;
           const availH = (297 - marginMm*2) * pxPerMm;
+          // inject the report HTML into the hidden container for inline printing
+          container.innerHTML = reportHtml;
+          container.style.display = 'block';
+          container.style.padding = '18px';
+          container.style.fontFamily = 'Arial, Helvetica, sans-serif';
+          container.style.color = '#111';
           container.style.width = (pageWidthMm - marginMm*2) + 'mm';
           container.style.boxSizing = 'border-box';
           container.style.fontSize = '11px';
@@ -796,10 +800,11 @@
         }catch(e){ /* ignore */ }
 
         setTimeout(()=>{
-          try{ window.print(); }
+            try{ window.print(); }
           finally{
             try{ if(injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle); }catch(e){}
-            container.style.display='none'; container.style.transform=''; container.style.fontSize=''; container.style.width='';
+            // cleanup the inline container (hide and remove content)
+            try{ container.style.display='none'; container.style.transform=''; container.style.fontSize=''; container.style.width=''; container.innerHTML = ''; }catch(e){}
           }
         }, 400);
       }
