@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PowerSo WaterBill — Track Your Water & Sewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      @media print { .no-print{ display:none !important } }
+      body { -webkit-font-smoothing:antialiased; }
+    </style>
+  </head>
+  <body class="bg-gradient-to-b from-sky-50 via-white to-gray-50 text-gray-900 p-6">
+    <div class="max-w-6xl mx-auto">
+      <header class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-teal-400 text-white rounded-lg flex items-center justify-center shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold">PowerSo WaterBill</h1>
+            <p class="text-sm text-gray-600">Monthly usage, yearly analysis & comparison</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 no-print">
+          <button id="print-btn" class="px-3 py-2 bg-white border rounded">Print</button>
+          <button id="export-pdf" class="px-3 py-2 bg-indigo-600 text-white rounded shadow">Export PDF</button>
+        </div>
+      </header>
+
+      <main class="grid grid-cols-1 md:grid-cols-3 gap-6" id="app-root">
+        <section class="col-span-1 bg-white p-5 rounded-xl shadow-lg">
+          <h2 class="font-semibold mb-4 text-lg">Customer & Meter</h2>
+          <label class="block text-sm">Customer Address <span class="text-xs text-gray-400">(for reports)</span></label>
+          <input id="cust-address" class="w-full p-2 border rounded mb-3" placeholder="123 Main St, City, State" />
+
+          <label class="block text-sm">Meter Number</label>
+          <input id="meter-number" class="w-full p-2 border rounded mb-3" placeholder="Meter #" />
+
+          <h3 class="font-semibold mt-2 mb-2">Monthly Readings (CCF)</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-sm">Last Read Date</label>
+              <input id="last-read-date" type="date" class="w-full p-2 border rounded mb-2" />
+            </div>
+            <div>
+              <label class="block text-sm">Current Read Date</label>
+              <input id="current-read-date" type="date" class="w-full p-2 border rounded mb-2" />
+            </div>
+          </div>
+
+          <label class="block text-sm">Last Read (CCF)</label>
+          <input id="last-read" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0" />
+
+          <label class="block text-sm">Current Read (CCF)</label>
+          <input id="current-read" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0" />
+          <div id="read-error" class="text-sm text-red-600 mt-1" style="display:none"></div>
+
+          <div class="mt-3 text-sm space-y-2 bg-sky-50 p-3 rounded">
+            <p class="text-gray-700"><strong>CCF Used:</strong> <span id="ccf-used" class="font-medium">0.00</span></p>
+            <p class="text-gray-700"><strong>Gallons:</strong> <span id="gallons-used" class="font-medium">0</span></p>
+          </div>
+
+          <hr class="my-4" />
+
+          <h3 class="font-semibold mb-2">Charges</h3>
+          <label class="block text-sm">Water Base Service Charge</label>
+          <input id="water-base" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
+
+          <!-- Water charge mode below base charge -->
+          <div class="mt-2 mb-2">
+            <label class="block text-sm">Water Charge Mode</label>
+            <div class="flex gap-4 items-center text-sm mt-1">
+              <label class="inline-flex items-center"><input type="radio" name="water-charge-mode" id="water-mode-flat" value="flat" checked class="mr-2" />Charge by flat water rate per CCF</label>
+              <label class="inline-flex items-center"><input type="radio" name="water-charge-mode" id="water-mode-tiered" value="tiered" class="mr-2" />Charge based on tiers</label>
+            </div>
+          </div>
+
+          <!-- Water rate (shown for flat mode) -->
+          <div id="water-rate-container" class="mb-2">
+            <label class="block text-sm">Water Rate (per CCF)</label>
+            <input id="water-rate" type="number" min="0" step="0.01" class="w-full p-2 border rounded" value="3.50" />
+          </div>
+
+          <!-- Tier inputs (shown for tiered mode) - dynamic add/remove -->
+          <div id="tiers-container" class="hidden bg-white p-3 rounded border mb-2">
+            <p class="text-xs text-gray-600 mb-2">Define cumulative tiers (usage billed across tiers). Enter the upper limit for each tier and its rate. Use Add Tier to insert more tiers.</p>
+            <div id="tiers-list" class="space-y-2"></div>
+            <div class="flex gap-2 mt-2">
+              <button id="add-tier" type="button" class="px-3 py-1 bg-white border rounded text-sm">Add Tier</button>
+              <button id="reset-tiers" type="button" class="px-3 py-1 bg-white border rounded text-sm">Reset Default 3</button>
+            </div>
+
+            <template id="tier-row-template">
+              <div class="grid grid-cols-12 gap-2 items-center">
+                <div class="col-span-3 text-sm text-gray-700">Tier <span class="tier-index">#</span></div>
+                <div class="col-span-4">
+                  <input type="number" class="tier-limit p-2 border rounded w-full" value="0" min="0" step="1" />
+                </div>
+                <div class="col-span-4">
+                  <input type="number" class="tier-rate p-2 border rounded w-full" value="0.00" min="0" step="0.01" />
+                </div>
+                <div class="col-span-1 text-right">
+                  <button type="button" class="remove-tier text-red-500">Remove</button>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Utility tax percentage -->
+          <label class="block text-sm">Utility Tax Rate (%)</label>
+          <input id="utility-tax" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
+
+          <div class="mb-2">
+            <label class="inline-flex items-center">
+              <input id="sewer-enabled" type="checkbox" class="mr-2" />
+              <span class="text-sm">This account is billed for sewer</span>
+            </label>
+          </div>
+
+          <div id="sewer-fields" class="hidden">
+            <label class="block text-sm">Sewer Base Service Charge</label>
+            <input id="sewer-base" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
+
+            <label class="block text-sm">Sewer Rate (per CCF)</label>
+            <input id="sewer-rate" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="2.00" />
+          </div>
+
+          <!-- removed old tier checkbox area (moved above water rate) -->
+
+          <label class="block text-sm">Billing Month</label>
+          <input id="billing-month" type="month" class="w-full p-2 border rounded mb-3" />
+          <div id="billing-month-error" class="text-sm text-red-600 mt-1" style="display:none"></div>
+
+          <div class="flex gap-2">
+            <button id="calc-btn" class="flex-1 bg-blue-600 text-white p-2 rounded">Calculate</button>
+            <button id="save-month" class="flex-1 bg-green-600 text-white p-2 rounded">Save Month</button>
+          </div>
+        </section>
+
+        <aside class="col-span-1 md:col-span-2 space-y-4">
+          <div class="bg-white p-5 rounded-xl shadow-lg">
+            <div class="flex items-start justify-between">
+              <div>
+                <h3 class="font-semibold text-lg">Main Results</h3>
+                <p class="text-sm text-gray-500">Summary for the selected billing period</p>
+              </div>
+              <div class="text-right text-xs text-gray-500">Unit: CCF / Gallons</div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-3 gap-4">
+              <div class="p-3 bg-sky-50 rounded">
+                <div class="text-xs text-gray-500">CCF Used</div>
+                <div id="result-ccf" class="text-xl font-semibold">0.00</div>
+              </div>
+              <div class="p-3 bg-sky-50 rounded">
+                <div class="text-xs text-gray-500">Gallons</div>
+                <div id="result-gal" class="text-xl font-semibold">0</div>
+              </div>
+              <div class="p-3 bg-emerald-50 rounded">
+                <div class="text-xs text-gray-500">Total $</div>
+                <div id="result-total" class="text-xl font-semibold">$0.00</div>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-4">
+              <div class="p-3 bg-white rounded border">
+                <div class="text-xs text-gray-500">Water Charge</div>
+                <div id="result-water" class="text-lg font-semibold">$0.00</div>
+              </div>
+              <div class="p-3 bg-white rounded border">
+                <div class="text-xs text-gray-500">Sewer Charge</div>
+                <div id="result-sewer" class="text-lg font-semibold">$0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl shadow-lg">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-semibold">Saved Months</h3>
+                <p class="text-sm text-gray-500">Click Save to record the month.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-500">Year</label>
+                <select id="year-select" class="p-2 border rounded text-sm"></select>
+              </div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead class="bg-gray-100"><tr>
+                  <th class="p-2 text-left">Month</th>
+                  <th class="p-2 text-right">CCF</th>
+                  <th class="p-2 text-right">Gallons</th>
+                  <th class="p-2 text-right">Total $</th>
+                  <th class="p-2 text-center">Actions</th>
+                </tr></thead>
+                <tbody id="records-body"></tbody>
+              </table>
+            </div>
+
+            <div class="mt-4">
+              <canvas id="trend-chart" height="120"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl shadow-lg">
+            <h3 class="font-semibold">Yearly Summary & Comparison</h3>
+            <p class="text-sm text-gray-500">Totals for selected year and comparison to previous year.</p>
+
+            <div class="mt-3 grid grid-cols-2 gap-4">
+              <div class="p-3 bg-gray-50 rounded">
+                <div class="text-xs text-gray-500">This year — Usage</div>
+                <div id="year-usage" class="text-lg font-semibold">0 CCF</div>
+                <div class="text-xs text-gray-500">Avg/month <span id="year-avg">0</span></div>
+              </div>
+              <div class="p-3 bg-gray-50 rounded">
+                <div class="text-xs text-gray-500">This year — Cost</div>
+                <div id="year-cost" class="text-lg font-semibold">$0.00</div>
+                <div class="text-xs text-gray-500">Change vs prev: <span id="year-change">—</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+      <footer class="mt-6 text-xs text-gray-500 text-center">PowerSo — Water billing helper</footer>
+    </div>
+
+    <script>
+      const STORAGE_KEY = 'waterso_state_v1';
+      const LEGACY_KEY = 'watersom_state_v1';
+      const $ = id => document.getElementById(id);
+      const toMoney = v => '$' + Number(v || 0).toFixed(2);
+
+      // elements
+      const addressEl = $('cust-address');
+      const meterEl = $('meter-number');
+      const lastReadEl = $('last-read');
+      const currentReadEl = $('current-read');
+      const lastReadDateEl = $('last-read-date');
+      const currentReadDateEl = $('current-read-date');
+      const ccfUsedEl = $('ccf-used');
+      const gallonsEl = $('gallons-used');
+      const waterBaseEl = $('water-base');
+      const waterRateEl = $('water-rate');
+      const sewerEnabledEl = $('sewer-enabled');
+      const sewerBaseEl = $('sewer-base');
+      const sewerRateEl = $('sewer-rate');
+      const sewerFields = $('sewer-fields');
+      const billingMonthEl = $('billing-month');
+      const calcBtn = $('calc-btn');
+      const saveBtn = $('save-month');
+  const tiersContainer = $('tiers-container');
+  const waterModeFlat = $('water-mode-flat');
+  const waterModeTiered = $('water-mode-tiered');
+  const waterRateContainer = $('water-rate-container');
+  const utilityTaxEl = $('utility-tax');
+      const recordsBody = $('records-body');
+      const exportPdfBtn = $('export-pdf');
+      const printBtn = $('print-btn');
+
+      const resultCcf = $('result-ccf');
+      const resultGal = $('result-gal');
+      const resultWater = $('result-water');
+      const resultSewer = $('result-sewer');
+      const resultTotal = $('result-total');
+
+      const yearSelect = $('year-select');
+      const yearUsageEl = $('year-usage');
+      const yearAvgEl = $('year-avg');
+      const yearCostEl = $('year-cost');
+      const yearChangeEl = $('year-change');
+
+      let trendChart = null;
+
+      function migrateStorage(){ try{ const newVal = localStorage.getItem(STORAGE_KEY); const oldVal = localStorage.getItem(LEGACY_KEY); if(!newVal && oldVal) localStorage.setItem(STORAGE_KEY, oldVal); }catch(e){console.warn(e);} }
+      function loadState(){ migrateStorage(); try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : { records: [] }; }catch(e){ return { records: [] }; } }
+      function saveState(s){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){ console.warn(e); } }
+
+      // helper: read tier rows from DOM into sorted array of {limit, rate}
+      function readTiersFromDOM(){
+        const list = [];
+        const rows = document.querySelectorAll('#tiers-list > .tier-row');
+        rows.forEach((r,idx)=>{
+          const limitEl = r.querySelector('.tier-limit');
+          const rateEl = r.querySelector('.tier-rate');
+          const limit = Number(limitEl.value) || 0;
+          const rate = Number(rateEl.value) || 0;
+          list.push({ limit, rate });
+        });
+        // ensure sorted by limit ascending
+        list.sort((a,b)=>a.limit - b.limit);
+        return list;
+      }
+
+      function calcTieredCharge(ccf){
+        // Flat mode: simple per-CCF rate
+        if(waterModeFlat && waterModeFlat.checked) return ccf * (parseFloat(waterRateEl.value) || 0);
+
+        // Tiered mode: compute across dynamic tiers
+        const tiers = readTiersFromDOM();
+        if(!tiers.length) return 0;
+        let prev = 0, charge = 0;
+        for(let i=0;i<tiers.length;i++){
+          const upper = tiers[i].limit || 0;
+          const rate = tiers[i].rate || 0;
+          const tierUsage = Math.max(0, Math.min(ccf, upper) - prev);
+          if(tierUsage > 0) charge += tierUsage * rate;
+          prev = upper;
+        }
+        // if consumption beyond highest limit, charge at last tier's rate
+        const lastRate = tiers[tiers.length-1].rate || 0;
+        if(ccf > prev) charge += (ccf - prev) * lastRate;
+        return charge;
+      }
+
+      // Validation helpers
+      function showError(id, msg){ const el = document.getElementById(id); if(!el) return; if(msg){ el.style.display='block'; el.textContent = msg; } else { el.style.display='none'; el.textContent=''; } }
+
+      function validateReads(){
+        const last = parseFloat(lastReadEl.value) || 0;
+        const curr = parseFloat(currentReadEl.value) || 0;
+        if(curr < last){ showError('read-error','Current read must be equal or greater than Last read'); return false; }
+        showError('read-error','');
+        return true;
+      }
+
+      function validateBillingMonth(){
+        const m = billingMonthEl.value || '';
+        if(!m){ showError('billing-month-error','Please select a billing month'); return false; }
+        showError('billing-month-error','');
+        return true;
+      }
+
+      function validateTiers(){
+        const tiers = readTiersFromDOM();
+        if(!tiers.length) return true; // nothing to validate
+        // ensure strictly increasing limits and non-negative rates
+        for(let i=0;i<tiers.length;i++){
+          const t = tiers[i];
+          if(t.limit < 0) { alert('Tier limits must be non-negative'); return false; }
+          if(t.rate < 0) { alert('Tier rates must be non-negative'); return false; }
+          if(i>0 && tiers[i].limit <= tiers[i-1].limit){ alert('Tier limits must be increasing (each tier limit greater than previous)'); return false; }
+        }
+        return true;
+      }
+
+      function validateAll(){
+        const ok1 = validateReads();
+        const ok2 = validateBillingMonth();
+        const ok3 = validateTiers();
+        return ok1 && ok2 && ok3;
+      }
+
+      // returns array of { limit, rate, usage, cost, label }
+      function computeTierBreakdown(ccf){
+        const out = [];
+        if(waterModeFlat && waterModeFlat.checked){
+          const rate = parseFloat(waterRateEl.value) || 0;
+          const cost = ccf * rate;
+          out.push({ label:'Flat rate', limit: null, rate, usage: ccf, cost });
+          return out;
+        }
+        const tiers = readTiersFromDOM();
+        if(!tiers.length) return out;
+        let prev = 0;
+        for(let i=0;i<tiers.length;i++){
+          const upper = Number(tiers[i].limit) || 0;
+          const rate = Number(tiers[i].rate) || 0;
+          const usage = Math.max(0, Math.min(ccf, upper) - prev);
+          const cost = usage * rate;
+          out.push({ label: `Tier ${i+1}`, limit: upper, rate, usage, cost });
+          prev = upper;
+        }
+        // beyond last
+        if(ccf > prev){ const lastRate = Number(tiers[tiers.length-1].rate) || 0; const usage = ccf - prev; out.push({ label: `Above ${prev}`, limit: null, rate: lastRate, usage, cost: usage * lastRate }); }
+        return out;
+      }
+
+      function autoCalculateReads(){ const last = parseFloat(lastReadEl.value) || 0; const curr = parseFloat(currentReadEl.value) || 0; const ccf = Math.max(0, curr - last); const gallons = Math.round(ccf * 748); ccfUsedEl.textContent = ccf.toFixed(2) + ' CCF'; gallonsEl.textContent = gallons.toLocaleString() + ' gal'; resultCcf.textContent = ccf.toFixed(2); resultGal.textContent = gallons.toLocaleString(); return { ccf, gallons }; }
+
+      function calculateCharges(){
+        // basic validations before calculating (reads and tiers)
+        if(!validateReads()) return { ccf:0, gallons:0, waterCharge:0, sewerCharge:0, taxAmount:0, total:0 };
+        if(!validateTiers()) return { ccf:0, gallons:0, waterCharge:0, sewerCharge:0, taxAmount:0, total:0 };
+        const { ccf, gallons } = autoCalculateReads();
+  const breakdown = computeTierBreakdown(ccf);
+  const waterChargeUsage = breakdown.reduce((s,b)=> s + (Number(b.cost)||0), 0);
+  const waterBase = parseFloat(waterBaseEl.value) || 0;
+  const waterChargeBeforeTax = waterBase + waterChargeUsage;
+        let sewerChargeBeforeTax = 0;
+        const sewerBase = parseFloat(sewerBaseEl?.value || 0) || 0;
+        if(sewerEnabledEl.checked){ sewerChargeBeforeTax = sewerBase + (ccf * (parseFloat(sewerRateEl.value) || 0)); }
+
+  // Utility tax applies only to water charges (not to sewer)
+  const taxRate = (parseFloat(utilityTaxEl.value) || 0) / 100;
+  const taxAmount = waterChargeBeforeTax * taxRate;
+  const total = waterChargeBeforeTax + sewerChargeBeforeTax + taxAmount;
+
+        resultWater.textContent = toMoney(waterChargeBeforeTax);
+        resultSewer.textContent = toMoney(sewerChargeBeforeTax);
+        // show tax and total
+        const existingTax = document.getElementById('result-tax');
+        if(!existingTax){
+          const taxDiv = document.createElement('div');
+          taxDiv.className = 'mt-2 text-sm text-gray-600';
+          taxDiv.id = 'result-tax';
+          taxDiv.innerHTML = `<div>Utility Tax: <strong>${toMoney(taxAmount)}</strong> (${(taxRate*100).toFixed(2)}%)</div>`;
+          resultTotal.parentElement.appendChild(taxDiv);
+        } else {
+          existingTax.innerHTML = `<div>Utility Tax: <strong>${toMoney(taxAmount)}</strong> (${(taxRate*100).toFixed(2)}%)</div>`;
+        }
+
+        resultTotal.textContent = toMoney(total);
+        resultCcf.textContent = ccf.toFixed(2);
+        resultGal.textContent = gallons.toLocaleString();
+        return { ccf, gallons, breakdown, waterCharge: waterChargeBeforeTax, sewerCharge: sewerChargeBeforeTax, taxAmount, total, waterBase, sewerBase, taxRate, mode: (waterModeTiered && waterModeTiered.checked) ? 'tiered' : 'flat' };
+      }
+
+  function renderRecords(){ const state = loadState(); const recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||'')); recordsBody.innerHTML=''; recs.forEach((r,idx)=>{ const tr = document.createElement('tr'); tr.className='border-b'; const tiersMeta = r.tiers && r.tiers.length ? ` &middot; Tiers:${r.tiers.length}` : ''; const meta = `<div class="text-xs text-gray-500">${r.mode || 'flat'} ${tiersMeta} ${r.taxAmount? '&middot; Tax:'+ (Number(r.taxAmount)||0).toFixed(2): ''}</div>`; tr.innerHTML = `<td class="p-2">${r.month}${meta}</td><td class="p-2 text-right">${Number(r.ccf).toFixed(2)}</td><td class="p-2 text-right">${Number(r.gallons).toLocaleString()}</td><td class="p-2 text-right">${toMoney(r.total)}</td><td class="p-2 text-center"><button data-idx="${idx}" class="delete-row text-red-500 text-sm">Delete</button></td>`; recordsBody.appendChild(tr); }); Array.from(document.getElementsByClassName('delete-row')).forEach(btn=> btn.addEventListener('click', e=>{ const i = Number(e.target.dataset.idx); const s = loadState(); s.records.splice(i,1); saveState(s); renderRecords(); updateChart(); updateYearSelect(); })); updateChart(); updateYearSelect(); }
+
+  function saveMonth(){ const m = billingMonthEl.value || new Date().toISOString().slice(0,7); const res = calculateCharges(); const state = loadState(); state.address = addressEl.value; state.meter = meterEl.value; state.records = state.records || []; const existing = state.records.find(r=>r.month===m);
+    // capture current tiers
+    const tiers = readTiersFromDOM();
+    const rec = { month: m, year: m.slice(0,4), ccf: res.ccf, gallons: res.gallons, waterBase: res.waterBase || 0, waterRate: parseFloat(waterRateEl.value) || 0, tiers: tiers, sewerBase: res.sewerBase || 0, sewerRate: parseFloat(sewerRateEl.value) || 0, waterCharge: res.waterCharge, sewerCharge: res.sewerCharge, taxAmount: res.taxAmount || 0, taxRate: res.taxRate || 0, utilityTax: parseFloat(utilityTaxEl.value) || 0, mode: res.mode || 'flat', total: res.total, lastReadDate: lastReadDateEl.value || null, currentReadDate: currentReadDateEl.value || null };
+    if(existing) Object.assign(existing, rec); else state.records.push(rec); saveState(state); renderRecords(); alert('Saved ' + m); }
+
+
+      function getAvailableYears(){ const s = loadState(); const years = new Set(); (s.records||[]).forEach(r=>{ if(r.month && r.month.length>=4) years.add(r.month.slice(0,4)); }); return Array.from(years).sort(); }
+
+      function updateYearSelect(){ const years = getAvailableYears(); yearSelect.innerHTML = ''; const allOpt = document.createElement('option'); allOpt.value='all'; allOpt.textContent='All'; yearSelect.appendChild(allOpt); years.forEach(y=>{ const o = document.createElement('option'); o.value=y; o.textContent=y; yearSelect.appendChild(o); }); yearSelect.value = years.includes(new Date().getFullYear().toString()) ? new Date().getFullYear().toString() : 'all'; updateYearSummary(); }
+
+      function aggregateYear(year){ const s = loadState(); const recs = (s.records||[]).filter(r=> year==='all' ? true : (r.year===year)); const totalCcf = recs.reduce((a,b)=>a+Number(b.ccf||0),0); const totalCost = recs.reduce((a,b)=>a+Number(b.total||0),0); return { totalCcf, totalCost, months: recs.length, recs }; }
+
+      function updateYearSummary(){ const year = yearSelect.value || 'all'; if(year==='all'){ yearUsageEl.textContent = '—'; yearCostEl.textContent = '—'; yearAvgEl.textContent = '—'; yearChangeEl.textContent = '—'; return; } const thisYear = aggregateYear(year); const prev = aggregateYear((Number(year)-1).toString()); yearUsageEl.textContent = `${thisYear.totalCcf.toFixed(2)} CCF`; yearAvgEl.textContent = thisYear.months ? (thisYear.totalCcf/thisYear.months).toFixed(2) : '0'; yearCostEl.textContent = toMoney(thisYear.totalCost); if(prev.months){ const pct = prev.totalCost ? ((thisYear.totalCost - prev.totalCost)/prev.totalCost)*100 : 100; yearChangeEl.textContent = `${pct>=0?'+':''}${pct.toFixed(1)}%`; } else yearChangeEl.textContent = '—'; updateChart(); }
+
+      function updateChart(){
+        const state = loadState();
+        let recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
+        // If there are no saved records, show a single-point using current calculation
+        if(!recs.length){ const curMonth = billingMonthEl.value || new Date().toISOString().slice(0,7); const cur = calculateCharges(); recs = [{ month: curMonth, gallons: cur.gallons, total: cur.total }]; }
+
+        const labels = recs.map(r=>r.month);
+        const gallonsData = recs.map(r=>Number(r.gallons||0));
+        const costData = recs.map(r=>Number(r.total||0));
+        const ctx = $('trend-chart').getContext('2d');
+        if(trendChart){ try{ trendChart.destroy(); }catch(e){} }
+
+        const cfg = {
+          data: {
+            labels,
+            datasets: [
+              { type: 'bar', label: 'Total $', data: costData, backgroundColor: 'rgba(16,185,129,0.9)', yAxisID: 'y2' },
+              { type: 'line', label: 'Gallons', data: gallonsData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', yAxisID: 'y1', tension: 0.2, fill: false }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            stacked: false,
+            scales: {
+              y1: { type: 'linear', position: 'left', title: { display: true, text: 'Gallons' } },
+              y2: { type: 'linear', position: 'right', title: { display: true, text: 'Dollars' }, grid: { drawOnChartArea: false } }
+            },
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx){
+                    const v = ctx.raw;
+                    if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2);
+                    return ctx.dataset.label + ': ' + Number(v).toLocaleString();
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        trendChart = new Chart(ctx, cfg);
+      }
+
+
+      async function exportPdf(){
+        try{
+          if(typeof html2canvas==='undefined' || !window.jspdf) return window.print();
+          // build a clean report node
+          const state = loadState();
+          const report = document.createElement('div');
+          report.style.width = '800px';
+          report.style.padding = '20px';
+          report.style.background = 'white';
+          report.style.color = '#111';
+          report.style.fontFamily = 'Arial, Helvetica, sans-serif';
+
+          const header = document.createElement('div');
+          header.innerHTML = `<h2 style="margin:0 0 6px 0">PowerSo WaterBill Report</h2><div style="font-size:12px;color:#555">${addressEl.value || ''} ${meterEl.value ? '• Meter: '+meterEl.value:''}</div><hr style="margin:10px 0">`;
+          report.appendChild(header);
+
+          const selMonth = billingMonthEl.value || new Date().toISOString().slice(0,7);
+          const details = document.createElement('div');
+          details.style.marginBottom = '10px';
+          const calc = calculateCharges();
+          details.innerHTML = `<div><strong>Billing Month:</strong> ${selMonth}</div><div><strong>Last Read:</strong> ${lastReadEl.value || 'N/A'} (${lastReadDateEl.value || ''})</div><div><strong>Current Read:</strong> ${currentReadEl.value || 'N/A'} (${currentReadDateEl.value || ''})</div>`;
+          report.appendChild(details);
+
+          const table = document.createElement('table');
+          table.style.width='100%';
+          table.style.borderCollapse='collapse';
+          table.innerHTML = `
+            <tr><td style="padding:6px;border-bottom:1px solid #eee">CCF Used</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${calc.ccf.toFixed(2)}</td></tr>
+            <tr><td style="padding:6px;border-bottom:1px solid #eee">Gallons</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${calc.gallons.toLocaleString()}</td></tr>
+            <tr><td style="padding:6px;border-bottom:1px solid #eee">Water Charge (${calc.mode})</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.waterCharge)}</td></tr>
+            <tr><td style="padding:6px;border-bottom:1px solid #eee">Sewer Charge</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.sewerCharge)}</td></tr>
+            <tr><td style="padding:6px;border-bottom:1px solid #eee">Utility Tax</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(calc.taxAmount || 0)}</td></tr>
+            <tr><td style="padding:6px;font-weight:bold">Total</td><td style="padding:6px;font-weight:bold;text-align:right">${toMoney(calc.total)}</td></tr>
+          `;
+          report.appendChild(table);
+
+          // include tier breakdown
+          if(calc.breakdown && calc.breakdown.length){
+            const bd = document.createElement('div'); bd.style.marginTop='10px'; bd.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:6px">Water Charge Breakdown</div>';
+            const btable = document.createElement('table'); btable.style.width='100%'; btable.style.borderCollapse='collapse';
+            btable.innerHTML = `<tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Tier</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Usage CCF</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Rate</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Cost</th></tr>`;
+            calc.breakdown.forEach(b=>{ btable.innerHTML += `<tr><td style="padding:6px;border-bottom:1px solid #eee">${b.label}${b.limit? ' ≤ '+b.limit:''}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${b.usage.toFixed(2)}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(b.rate)}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${toMoney(b.cost)}</td></tr>` });
+            bd.appendChild(btable); report.appendChild(bd);
+          }
+
+          // include chart snapshot if present
+            const chartCanvas = document.getElementById('trend-chart');
+            if(chartCanvas){
+              const chartClone = document.createElement('div');
+              chartClone.style.marginTop = '12px';
+              chartClone.innerHTML = '<div style="font-size:12px;color:#555;margin-bottom:6px">Trend</div>';
+              report.appendChild(chartClone);
+              const chartImg = chartCanvas.toDataURL('image/png');
+              const img = new Image(); img.src = chartImg; img.style.maxWidth = '100%'; img.style.marginTop = '6px'; report.appendChild(img);
+            }
+
+          // render report to canvas and pdf
+          const canvas = await html2canvas(report, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+          const imgData = canvas.toDataURL('image/png');
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ unit:'pt', format:'a4' });
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          pdf.addImage(imgData, 'PNG', 20, 20, pdfWidth-40, pdfHeight);
+          pdf.save(`WaterBill_${selMonth}.pdf`);
+        }catch(e){ console.warn(e); window.print(); }
+      }
+
+      // events
+  lastReadEl.addEventListener('input', autoCalculateReads);
+  currentReadEl.addEventListener('input', autoCalculateReads);
+  // show/hide tiers and water-rate based on selected mode
+  function refreshTierVisibility(){
+    if(waterModeTiered && waterModeTiered.checked){
+      tiersContainer.classList.remove('hidden');
+      if(waterRateContainer) waterRateContainer.classList.add('hidden');
+      if(waterRateEl) waterRateEl.disabled = true;
+      waterRateContainer.setAttribute('aria-hidden','true');
+      tiersContainer.setAttribute('aria-hidden','false');
+    } else {
+      tiersContainer.classList.add('hidden');
+      if(waterRateContainer) waterRateContainer.classList.remove('hidden');
+      if(waterRateEl) waterRateEl.disabled = false;
+      waterRateContainer.setAttribute('aria-hidden','false');
+      tiersContainer.setAttribute('aria-hidden','true');
+    }
+    // update visible results immediately when mode changes
+    try{ calculateCharges(); }catch(e){/* ignore during init */}
+  }
+  if(waterModeFlat) waterModeFlat.addEventListener('change', ()=> refreshTierVisibility());
+  if(waterModeTiered) waterModeTiered.addEventListener('change', ()=> refreshTierVisibility());
+
+  // dynamic tier management
+  const tiersList = $('tiers-list');
+  const addTierBtn = $('add-tier');
+  const resetTiersBtn = $('reset-tiers');
+  const tierTemplate = $('tier-row-template');
+
+  function createTierRow(limit=0, rate=0){
+    const tpl = tierTemplate.content.cloneNode(true);
+    const wrapper = tpl.querySelector('div');
+    wrapper.classList.add('tier-row');
+    const limitEl = wrapper.querySelector('.tier-limit');
+    const rateEl = wrapper.querySelector('.tier-rate');
+    const idxEl = wrapper.querySelector('.tier-index');
+    limitEl.value = limit;
+    rateEl.value = rate;
+    // remove button
+    const removeBtn = wrapper.querySelector('.remove-tier');
+    removeBtn.addEventListener('click', ()=>{ wrapper.remove(); refreshTierLabels(); calculateCharges(); updateChart(); });
+    // recalc on input
+    [limitEl, rateEl].forEach(el=> el.addEventListener('input', ()=>{ refreshTierLabels(); try{ calculateCharges(); }catch(e){} updateChart(); }));
+    return wrapper;
+  }
+
+  function refreshTierLabels(){
+    const rows = tiersList.querySelectorAll('.tier-row');
+    rows.forEach((r,i)=>{ const idx = r.querySelector('.tier-index'); if(idx) idx.textContent = (i+1); });
+  }
+
+  function resetDefaultTiers(){
+    tiersList.innerHTML = '';
+    tiersList.appendChild(createTierRow(10,2.50));
+    tiersList.appendChild(createTierRow(20,3.50));
+    tiersList.appendChild(createTierRow(99999,5.00));
+    refreshTierLabels();
+  }
+
+  addTierBtn.addEventListener('click', ()=>{ tiersList.appendChild(createTierRow(0,0.00)); refreshTierLabels(); calculateCharges(); updateChart(); });
+  resetTiersBtn.addEventListener('click', ()=>{ resetDefaultTiers(); calculateCharges(); updateChart(); });
+
+  // initialize tiers list with defaults if empty
+  (function initTiers(){ if(tiersList){ if(!tiersList.children.length) resetDefaultTiers(); } })();
+
+  // recalc when user edits rates or other charge inputs for immediate feedback
+  [waterRateEl, utilityTaxEl, waterBaseEl, sewerBaseEl, sewerRateEl].forEach(el=>{
+    if(!el) return;
+    el.addEventListener('input', ()=> { try{ calculateCharges(); }catch(e){} updateChart(); });
+  });
+      sewerEnabledEl.addEventListener('change', ()=> { if(sewerEnabledEl.checked) sewerFields.classList.remove('hidden'); else sewerFields.classList.add('hidden'); });
+  calcBtn.addEventListener('click', ()=> { calculateCharges(); updateChart(); });
+  saveBtn.addEventListener('click', ()=>{ if(!validateAll()) return; saveMonth(); updateChart(); });
+      exportPdfBtn.addEventListener('click', exportPdf);
+      printBtn.addEventListener('click', ()=> window.print());
+      yearSelect.addEventListener('change', updateYearSummary);
+
+  (function init(){ const state = loadState(); if(state.address) addressEl.value = state.address; if(state.meter) meterEl.value = state.meter; renderRecords(); updateYearSelect(); autoCalculateReads(); refreshTierVisibility(); })();
+    </script>
+  </body>
+</html>
