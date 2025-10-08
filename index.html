@@ -27,6 +27,14 @@
         color: var(--sea-900);
       }
 
+      /* Responsive header/title and compact print button for mobile */
+      .header-title{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: calc(100% - 110px); }
+      #print-btn{ padding:6px 8px; font-size:12px; border-radius:6px; background:white; color:var(--sea-700); border:1px solid rgba(6,182,212,0.12); }
+      @media (min-width:768px){
+        #print-btn{ padding:8px 12px; font-size:14px; }
+        .header-title{ max-width: none; }
+      }
+
       /* Logo box uses sea gradient */
       .logo-box { background: linear-gradient(135deg, var(--sea-600), var(--sea-500)); }
 
@@ -79,7 +87,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold">EASOM-Water Bill</h1>
+            <h1 class="text-2xl font-bold header-title">EASOM-Water Bill</h1>
             <p class="text-sm text-gray-600">Monthly usage, yearly analysis & comparison</p>
             <!-- Name chosen: EASOM (from Solomon/Elizabeth/Andrew) -->
           </div>
@@ -286,7 +294,7 @@
           </div>
         </aside>
       </main>
-      <footer class="mt-6 text-xs text-gray-500 text-center">PowerSo — Water billing helper</footer>
+  <footer class="mt-6 text-xs text-gray-500 text-center">Built by Solomon Ofori Manu, All rights reserved</footer>
     </div>
 
     <script>
@@ -723,26 +731,47 @@
             </table>
           </div>
           <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;align-items:center">
-            <div>Built by Solomon Ofori Manu — All rights reserved.</div>
+            <div>Built by Solomon Ofori Manu, All rights reserved</div>
             <div style="font-size:11px;color:#666">EASOM</div>
           </div>
         `;
-        // inject robust print CSS and scale to fit a single A4 page before printing
+        // Try a popup print window first — more reliable on mobile browsers.
+        try{
+          // build a minimal printable HTML document
+          const printStyles = `
+            @page { size: A4; margin: 6mm; }
+            body { font-family: Arial, Helvetica, sans-serif; color: #04202b; margin: 6mm; }
+            h2{ margin:0 0 6px 0; }
+            table{ width:100%; border-collapse: collapse; font-size: 11px; }
+            table td, table th { padding:6px; border-bottom:1px solid #eee; }
+            table th { text-align:left; color: #04202b; }
+            @media print { img { max-width:100%; } }
+          `;
+
+          const printableHTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${document.title}</title><style>${printStyles}</style></head><body>${container.innerHTML}<script>window.onload=function(){ setTimeout(function(){ try{ window.print(); }catch(e){} try{ window.close(); }catch(e){} },250); };<\/script></body></html>`;
+
+          const popup = window.open('', '_blank');
+          if(popup && popup.document){
+            popup.document.open();
+            popup.document.write(printableHTML);
+            popup.document.close();
+            // done — popup will call print and close itself
+            return;
+          }
+        }catch(e){ /* fall through to inline print fallback */ }
+
+        // fallback: use inline report with injected CSS and scale-to-fit (for desktop / blocked popups)
         let injectedStyle;
         try{
           const css = `
             @page { size: A4; margin: 6mm }
             @media print {
               html, body { height: 100%; }
-              /* hide everything except our report */
               body * { visibility: hidden !important; }
               #print-report, #print-report * { visibility: visible !important; }
-              /* position report at the printable area */
               #print-report { position: fixed !important; left: 6mm; top: 6mm; width: calc(210mm - 12mm) !important; box-sizing: border-box !important; }
-              /* avoid breaking tables across pages */
               table { page-break-inside: avoid !important; }
-              /* slightly smaller print font to help fit on one page */
-              #print-report { font-size: 11px !important; line-height: 1.15 !important; }
+              #print-report { font-size: 11px !important; line-height: 1.12 !important; }
               h2, h4 { margin: 0 0 6px 0 !important; }
             }
           `;
@@ -750,17 +779,13 @@
           if(!injectedStyle){ injectedStyle = document.createElement('style'); injectedStyle.id = 'easom-print-style'; injectedStyle.type = 'text/css'; document.head.appendChild(injectedStyle); }
           injectedStyle.innerHTML = css;
 
-          // approximate CSS pixels per millimeter (96dpi -> 96/25.4)
           const pxPerMm = 96/25.4;
-          const pageWidthMm = 210; const pageHeightMm = 297; const marginMm = 6; // match @page margin
+          const pageWidthMm = 210; const marginMm = 6;
           const availW = (pageWidthMm - marginMm*2) * pxPerMm;
-          const availH = (pageHeightMm - marginMm*2) * pxPerMm;
-          // set container width in mm so printed layout uses page width
+          const availH = (297 - marginMm*2) * pxPerMm;
           container.style.width = (pageWidthMm - marginMm*2) + 'mm';
           container.style.boxSizing = 'border-box';
-          // conservative reduce base font slightly to help fit
           container.style.fontSize = '11px';
-          // measure content
           const contentW = Math.max(1, container.scrollWidth);
           const contentH = Math.max(1, container.scrollHeight);
           const scaleW = availW / contentW;
@@ -768,9 +793,8 @@
           const scale = Math.min(1, scaleW, scaleH);
           container.style.transformOrigin = 'top left';
           container.style.transform = `scale(${scale})`;
-        }catch(e){ /* ignore scaling problems and print normally */ }
+        }catch(e){ /* ignore */ }
 
-        // trigger print; hide the container after and remove transform and injected CSS
         setTimeout(()=>{
           try{ window.print(); }
           finally{
