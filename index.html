@@ -422,7 +422,64 @@
         return { ccf, gallons, breakdown, waterCharge: waterChargeBeforeTax, sewerCharge: sewerChargeBeforeTax, taxAmount, total, waterBase, sewerBase, taxRate, mode: (waterModeTiered && waterModeTiered.checked) ? 'tiered' : 'flat' };
       }
 
-  function renderRecords(){ const state = loadState(); const recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||'')); recordsBody.innerHTML=''; recs.forEach((r,idx)=>{ const tr = document.createElement('tr'); tr.className='border-b'; const tiersMeta = r.tiers && r.tiers.length ? ` &middot; Tiers:${r.tiers.length}` : ''; const meta = `<div class="text-xs text-gray-500">${r.mode || 'flat'} ${tiersMeta} ${r.taxAmount? '&middot; Tax:'+ (Number(r.taxAmount)||0).toFixed(2): ''}</div>`; tr.innerHTML = `<td class="p-2">${r.month}${meta}</td><td class="p-2 text-right">${Number(r.ccf).toFixed(2)}</td><td class="p-2 text-right">${Number(r.gallons).toLocaleString()}</td><td class="p-2 text-right">${toMoney(r.total)}</td><td class="p-2 text-center"><button data-idx="${idx}" class="delete-row text-red-500 text-sm">Delete</button></td>`; recordsBody.appendChild(tr); }); Array.from(document.getElementsByClassName('delete-row')).forEach(btn=> btn.addEventListener('click', e=>{ const i = Number(e.target.dataset.idx); const s = loadState(); s.records.splice(i,1); saveState(s); renderRecords(); updateChart(); updateYearSelect(); })); updateChart(); updateYearSelect(); }
+  function renderRecords(){
+    const state = loadState();
+    const recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
+    recordsBody.innerHTML='';
+    recs.forEach((r,idx)=>{
+      const tr = document.createElement('tr'); tr.className='border-b';
+      const tiersMeta = r.tiers && r.tiers.length ? ` &middot; Tiers:${r.tiers.length}` : '';
+      const meta = `<div class="text-xs text-gray-500">${r.mode || 'flat'} ${tiersMeta} ${r.taxAmount? '&middot; Tax:'+ (Number(r.taxAmount)||0).toFixed(2): ''}</div>`;
+      tr.innerHTML = `<td class="p-2">${r.month}${meta}</td><td class="p-2 text-right">${Number(r.ccf).toFixed(2)}</td><td class="p-2 text-right">${Number(r.gallons).toLocaleString()}</td><td class="p-2 text-right">${toMoney(r.total)}</td><td class="p-2 text-center"><button data-idx="${idx}" class="delete-row text-red-500 text-sm">Delete</button> <button data-month="${r.month}" class="load-row text-blue-600 text-sm ml-2">Load</button></td>`;
+      recordsBody.appendChild(tr);
+    });
+
+    // delete handlers
+    Array.from(document.getElementsByClassName('delete-row')).forEach(btn=> btn.addEventListener('click', e=>{ const i = Number(e.target.dataset.idx); const s = loadState(); s.records.splice(i,1); saveState(s); renderRecords(); updateChart(); updateYearSelect(); }));
+
+    // load handlers
+    Array.from(document.getElementsByClassName('load-row')).forEach(btn=> btn.addEventListener('click', e=>{ const m = e.target.dataset.month; if(m) loadRecordByMonth(m); }));
+
+    updateChart(); updateYearSelect();
+  }
+
+  // load a saved record into the form for editing (rebuilds tier rows)
+  function loadRecordByMonth(month){
+    const state = loadState();
+    const rec = (state.records||[]).find(r=>r.month===month);
+    if(!rec) return;
+    billingMonthEl.value = rec.month || '';
+    const last = (rec.lastRead != null) ? rec.lastRead : 0;
+    lastReadEl.value = last;
+    const curr = (rec.currentRead != null) ? rec.currentRead : (Number(rec.ccf || 0) + Number(last));
+    currentReadEl.value = curr;
+    lastReadDateEl.value = rec.lastReadDate || '';
+    currentReadDateEl.value = rec.currentReadDate || '';
+    addressEl.value = rec.address || state.address || '';
+    meterEl.value = rec.meter || state.meter || '';
+    waterBaseEl.value = (rec.waterBase != null) ? rec.waterBase : waterBaseEl.value;
+    sewerBaseEl.value = (rec.sewerBase != null) ? rec.sewerBase : sewerBaseEl.value;
+    waterRateEl.value = (rec.waterRate != null) ? rec.waterRate : waterRateEl.value;
+    sewerRateEl.value = (rec.sewerRate != null) ? rec.sewerRate : sewerRateEl.value;
+    utilityTaxEl.value = (rec.utilityTax != null) ? rec.utilityTax : (rec.taxRate != null ? (Number(rec.taxRate||0)*100).toFixed(2) : utilityTaxEl.value);
+    // set sewer enabled
+    const hasSewer = (rec.sewerBase && Number(rec.sewerBase)>0) || (rec.sewerRate && Number(rec.sewerRate)>0) || Boolean(rec.sewerCharge);
+    sewerEnabledEl.checked = !!hasSewer;
+    if(sewerEnabledEl.checked) sewerFields.classList.remove('hidden'); else sewerFields.classList.add('hidden');
+    // rebuild tiers
+    if(rec.mode === 'tiered'){
+      if(waterModeTiered) waterModeTiered.checked = true;
+      if(waterModeFlat) waterModeFlat.checked = false;
+      tiersList.innerHTML = '';
+      if(rec.tiers && rec.tiers.length){ rec.tiers.forEach(t=> tiersList.appendChild(createTierRow(t.limit, t.rate))); }
+      else { resetDefaultTiers(); }
+    } else {
+      if(waterModeFlat) waterModeFlat.checked = true;
+      if(waterModeTiered) waterModeTiered.checked = false;
+      tiersList.innerHTML = '';
+    }
+    refreshTierLabels(); refreshTierVisibility(); calculateCharges(); updateChart();
+  }
 
   function saveMonth(){ const m = billingMonthEl.value || new Date().toISOString().slice(0,7); const res = calculateCharges(); const state = loadState(); state.address = addressEl.value; state.meter = meterEl.value; state.records = state.records || []; const existing = state.records.find(r=>r.month===m);
     // capture current tiers
@@ -441,10 +498,58 @@
 
       function updateChart(){
         const state = loadState();
-        let recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
-        // If there are no saved records, show a single-point using current calculation
-        if(!recs.length){ const curMonth = billingMonthEl.value || new Date().toISOString().slice(0,7); const cur = calculateCharges(); recs = [{ month: curMonth, gallons: cur.gallons, total: cur.total }]; }
+        const selectedYear = (yearSelect && yearSelect.value) ? yearSelect.value : 'all';
 
+        // If a specific year is selected, build Jan..Dec arrays (monthly KPI view)
+        if(selectedYear && selectedYear !== 'all'){
+          const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+          const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const gallonsData = new Array(12).fill(0);
+          const waterCostData = new Array(12).fill(0);
+          const totalCostData = new Array(12).fill(0);
+          const recs = (state.records||[]).filter(r=> r.month && r.month.slice(0,4) === selectedYear);
+          recs.forEach(r=>{
+            const m = r.month.slice(5,7);
+            const idx = months.indexOf(m);
+            if(idx>=0){ gallonsData[idx] += Number(r.gallons||0); totalCostData[idx] += Number(r.total||0); waterCostData[idx] += Number(r.waterCharge||0); }
+          });
+
+          const ctx = $('trend-chart').getContext('2d');
+          if(trendChart){ try{ trendChart.destroy(); }catch(e){} }
+          const cfg = {
+            data: {
+              labels,
+              datasets: [
+                { type: 'bar', label: 'Total $', data: totalCostData, backgroundColor: 'rgba(16,185,129,0.9)', yAxisID: 'y2' },
+                { type: 'bar', label: 'Water $', data: waterCostData, backgroundColor: 'rgba(59,130,246,0.85)', yAxisID: 'y2' },
+                { type: 'line', label: 'Gallons', data: gallonsData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', yAxisID: 'y1', tension: 0.2, fill: false }
+              ]
+            },
+            options: {
+              responsive: true,
+              interaction: { mode: 'index', intersect: false },
+              stacked: false,
+              scales: {
+                y1: { type: 'linear', position: 'left', title: { display: true, text: 'Gallons' } },
+                y2: { type: 'linear', position: 'right', title: { display: true, text: 'Dollars' }, grid: { drawOnChartArea: false } }
+              },
+              plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                  callbacks: {
+                    label: function(ctx){ const v = ctx.raw; if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2); return ctx.dataset.label + ': ' + Number(v).toLocaleString(); }
+                  }
+                }
+              }
+            }
+          };
+          trendChart = new Chart(ctx, cfg);
+          return;
+        }
+
+        // default: show a timeline of saved records (month labels)
+        let recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
+        if(!recs.length){ const curMonth = billingMonthEl.value || new Date().toISOString().slice(0,7); const cur = calculateCharges(); recs = [{ month: curMonth, gallons: cur.gallons, total: cur.total }]; }
         const labels = recs.map(r=>r.month);
         const gallonsData = recs.map(r=>Number(r.gallons||0));
         const costData = recs.map(r=>Number(r.total||0));
@@ -471,17 +576,12 @@
               legend: { position: 'bottom' },
               tooltip: {
                 callbacks: {
-                  label: function(ctx){
-                    const v = ctx.raw;
-                    if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2);
-                    return ctx.dataset.label + ': ' + Number(v).toLocaleString();
-                  }
+                  label: function(ctx){ const v = ctx.raw; if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2); return ctx.dataset.label + ': ' + Number(v).toLocaleString(); }
                 }
               }
             }
           }
         };
-
         trendChart = new Chart(ctx, cfg);
       }
 
@@ -546,10 +646,14 @@
           const canvas = await html2canvas(report, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
           const imgData = canvas.toDataURL('image/png');
           const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF({ unit:'pt', format:'a4' });
+          // landscape single page fit
+          const pdf = new jsPDF({ unit:'pt', format:'a4', orientation: 'landscape' });
           const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-          pdf.addImage(imgData, 'PNG', 20, 20, pdfWidth-40, pdfHeight);
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const margin = 20;
+          const fitWidth = pdfWidth - margin*2;
+          const fitHeight = (canvas.height * fitWidth) / canvas.width;
+          pdf.addImage(imgData, 'PNG', margin, margin, fitWidth, Math.min(fitHeight, pdfHeight - margin*2));
           pdf.save(`WaterBill_${selMonth}.pdf`);
         }catch(e){ console.warn(e); window.print(); }
       }
@@ -563,14 +667,14 @@
       tiersContainer.classList.remove('hidden');
       if(waterRateContainer) waterRateContainer.classList.add('hidden');
       if(waterRateEl) waterRateEl.disabled = true;
-      waterRateContainer.setAttribute('aria-hidden','true');
-      tiersContainer.setAttribute('aria-hidden','false');
+  if(waterRateContainer) waterRateContainer.setAttribute('aria-hidden','true');
+  if(tiersContainer) tiersContainer.setAttribute('aria-hidden','false');
     } else {
       tiersContainer.classList.add('hidden');
       if(waterRateContainer) waterRateContainer.classList.remove('hidden');
       if(waterRateEl) waterRateEl.disabled = false;
-      waterRateContainer.setAttribute('aria-hidden','false');
-      tiersContainer.setAttribute('aria-hidden','true');
+  if(waterRateContainer) waterRateContainer.setAttribute('aria-hidden','false');
+  if(tiersContainer) tiersContainer.setAttribute('aria-hidden','true');
     }
     // update visible results immediately when mode changes
     try{ calculateCharges(); }catch(e){/* ignore during init */}
