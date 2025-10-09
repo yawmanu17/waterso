@@ -87,9 +87,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold header-title">EASOM-Water Bill</h1>
+            <h1 class="text-2xl font-bold header-title">SOKEA-Water Bill</h1>
             <p class="text-sm text-gray-600">Water Monthly Usage & Yearly Analysis</p>
-            <!-- Name chosen: EASOM (from Solomon/Elizabeth/Andrew) -->
+            <!-- Name chosen: SOKEA (from Solomon/Elizabeth/Andrew) -->
           </div>
         </div>
 
@@ -679,14 +679,14 @@
           monthTable += '</table></div>';
         }catch(e){ monthTable = ''; }
 
-        document.title = `EASOM-Water Bill_${selMonth}`;
+  document.title = `SOKEA-Water Bill_${selMonth}`;
         // build the report HTML in a variable. Do NOT inject into the page yet —
         // popup flow will use this string directly. Only use container when
         // falling back to inline printing.
         const reportHtml = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <div>
-              <h2 style="margin:0;font-size:18px">EASOM - Water Bill</h2>
+              <h2 style="margin:0;font-size:18px">SOKEA - Water Bill</h2>
               <div style="font-size:11px;color:#555">${addressEl.value||''}${meterEl.value? ' • Meter: '+meterEl.value:''}</div>
             </div>
             <div style="text-align:right;font-size:12px">${selMonth}</div>
@@ -728,9 +728,9 @@
               <tr><td style="padding:6px 8px;color:#333">Change vs ${Number(selectedYear)-1}</td><td style="padding:6px 8px;text-align:right">${pctChange==null? '—' : ((pctChange>=0?'+':'')+pctChange.toFixed(1)+'%')}</td></tr>
             </table>
           </div>
-          <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;align-items:center">
+            <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;align-items:center">
             <div>Built by Solomon Ofori Manu, All rights reserved</div>
-            <div style="font-size:11px;color:#666">EASOM</div>
+            <div style="font-size:11px;color:#666">SOKEA</div>
           </div>
         `;
         // Try a popup print window first — more reliable on mobile browsers.
@@ -773,8 +773,8 @@
               h2, h4 { margin: 0 0 6px 0 !important; }
             }
           `;
-          injectedStyle = document.getElementById('easom-print-style');
-          if(!injectedStyle){ injectedStyle = document.createElement('style'); injectedStyle.id = 'easom-print-style'; injectedStyle.type = 'text/css'; document.head.appendChild(injectedStyle); }
+          injectedStyle = document.getElementById('sokea-print-style');
+          if(!injectedStyle){ injectedStyle = document.createElement('style'); injectedStyle.id = 'sokea-print-style'; injectedStyle.type = 'text/css'; document.head.appendChild(injectedStyle); }
           injectedStyle.innerHTML = css;
 
           const pxPerMm = 96/25.4;
