@@ -81,22 +81,96 @@
     <div class="max-w-6xl mx-auto">
       <!-- hidden print container; populated by printReport() and displayed only during print -->
       <div id="print-report" style="display:none"></div>
-      <header class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 logo-box text-white rounded-lg flex items-center justify-center shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
+      
+      <!-- Authentication Modal -->
+      <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display:none">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 logo-box text-white rounded-lg mx-auto mb-4 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900">OFORI-Water Bill</h2>
+            <p class="text-gray-600">Access your water usage tracking</p>
           </div>
-          <div>
-            <h1 class="text-2xl font-bold header-title">OFORI-Water Bill</h1>
-            <p class="text-sm text-gray-600">Water Monthly Usage & Yearly Analysis</p>
-            <!-- Name chosen: OFORI (from Solomon/Elizabeth/Andrew) -->
-          </div>
-        </div>
 
-        <div class="flex items-center gap-2 no-print">
-          <button id="print-btn" class="px-3 py-2 bg-white border rounded">Print / Save as PDF</button>
+          <!-- Login Form -->
+          <div id="login-form">
+            <h3 class="text-xl font-semibold mb-4">Sign In</h3>
+            <form id="login-form-element" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input id="login-email" type="email" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input id="login-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password">
+              </div>
+              <div id="login-error" class="text-red-600 text-sm" style="display:none"></div>
+              <button type="submit" class="w-full sea-primary text-white py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity">
+                Sign In
+              </button>
+            </form>
+            <div class="mt-4 text-center">
+              <p class="text-gray-600">Don't have an account? 
+                <button id="show-signup" class="text-blue-600 hover:text-blue-800 font-medium">Sign up</button>
+              </p>
+            </div>
+          </div>
+
+          <!-- Signup Form -->
+          <div id="signup-form" style="display:none">
+            <h3 class="text-xl font-semibold mb-4">Create Account</h3>
+            <form id="signup-form-element" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input id="signup-name" type="text" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your full name">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input id="signup-email" type="email" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input id="signup-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Create a password">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input id="signup-confirm-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Confirm your password">
+              </div>
+              <div id="signup-error" class="text-red-600 text-sm" style="display:none"></div>
+              <button type="submit" class="w-full sea-primary text-white py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity">
+                Create Account
+              </button>
+            </form>
+            <div class="mt-4 text-center">
+              <p class="text-gray-600">Already have an account? 
+                <button id="show-login" class="text-blue-600 hover:text-blue-800 font-medium">Sign in</button>
+              </p>
+            </div>
+          </div>
         </div>
-      </header>
+      </div>
+      
+      <!-- Main App Content (hidden when not authenticated) -->
+      <div id="main-app" style="display:none">
+        <header class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 logo-box text-white rounded-lg flex items-center justify-center shadow-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold header-title">OFORI-Water Bill</h1>
+              <p class="text-sm text-gray-600">Water Monthly Usage & Yearly Analysis</p>
+              <p class="text-sm font-semibold text-blue-700 mt-1">Welcome, <span id="user-name" class="font-bold text-blue-800">User</span>!</p>
+              <!-- Name chosen: OFORI (from Solomon/Elizabeth/Andrew) -->
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 no-print">
+            <button id="logout-btn" class="px-3 py-2 text-sm text-gray-700 bg-gray-100 border rounded hover:bg-gray-200">Logout</button>
+            <button id="print-btn" class="px-3 py-2 bg-white border rounded">Print / Save as PDF</button>
+          </div>
+        </header>
 
       <main class="grid grid-cols-1 md:grid-cols-3 gap-6" id="app-root">
         <section class="col-span-1 bg-white p-5 rounded-xl shadow-lg">
@@ -181,19 +255,29 @@
           <label class="block text-sm">Utility Tax Rate (%)</label>
           <input id="utility-tax" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
 
-          <div class="mb-2">
-            <label class="inline-flex items-center">
-              <input id="sewer-enabled" type="checkbox" class="mr-2" />
-              <span class="text-sm">This account is billed for sewer</span>
+          <hr class="my-4" />
+
+          <h3 class="font-semibold mb-3 text-lg card-title">Sewer Services</h3>
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="sewer-enabled" type="checkbox" class="w-4 h-4 mr-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+              <span class="text-base font-medium text-gray-800">Include sewer charges for this account</span>
             </label>
+            <p class="text-sm text-gray-600 mt-2 ml-7">Check this box if your water bill includes sewer service charges</p>
           </div>
 
-          <div id="sewer-fields" class="hidden">
-            <label class="block text-sm">Sewer Base Service Charge</label>
-            <input id="sewer-base" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
-
-            <label class="block text-sm">Sewer Rate (per CCF)</label>
-            <input id="sewer-rate" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="2.00" />
+          <div id="sewer-fields" class="hidden bg-blue-50 p-4 rounded-lg border border-blue-200 mb-3">
+            <h4 class="font-medium text-gray-800 mb-3">Sewer Service Charges</h4>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Sewer Base Service Charge</label>
+                <input id="sewer-base" type="number" min="0" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="0.00" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Sewer Rate (per CCF)</label>
+                <input id="sewer-rate" type="number" min="0" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="2.00" />
+              </div>
+            </div>
           </div>
 
           <!-- removed old tier checkbox area (moved above water rate) -->
@@ -238,9 +322,9 @@
                 <div class="text-xs text-gray-500">Water Charge</div>
                 <div id="result-water" class="text-lg font-semibold">$0.00</div>
               </div>
-              <div class="p-3 bg-white rounded border">
-                <div class="text-xs text-gray-500">Sewer Charge</div>
-                <div id="result-sewer" class="text-lg font-semibold">$0.00</div>
+              <div id="sewer-result-container" class="p-3 bg-blue-50 rounded border-2 border-blue-200">
+                <div class="text-xs text-blue-600 font-medium">Sewer Charge</div>
+                <div id="result-sewer" class="text-lg font-semibold text-blue-800">$0.00</div>
               </div>
             </div>
           </div>
@@ -294,10 +378,173 @@
           </div>
         </aside>
       </main>
-  <footer class="mt-6 text-xs text-gray-500 text-center">Built by Solomon Ofori Manu, All rights reserved</footer>
+      <footer class="mt-6 text-xs text-gray-500 text-center">Built by Solomon Ofori Manu, All rights reserved</footer>
+      </div>
+      <!-- End Main App Content -->
     </div>
 
     <script>
+      // Authentication System
+      const AUTH_STORAGE_KEY = 'waterso_auth';
+      const USERS_STORAGE_KEY = 'waterso_users';
+      
+      // Authentication state management
+      class AuthManager {
+        constructor() {
+          this.currentUser = null;
+          this.init();
+        }
+
+        init() {
+          // Check if user is already logged in
+          const authData = this.getAuthData();
+          if (authData && authData.token && authData.userId) {
+            const user = this.getUserById(authData.userId);
+            if (user) {
+              this.currentUser = user;
+              this.showMainApp();
+              return;
+            }
+          }
+          this.showAuthModal();
+        }
+
+        getAuthData() {
+          try {
+            const data = localStorage.getItem(AUTH_STORAGE_KEY);
+            return data ? JSON.parse(data) : null;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        setAuthData(userId, token) {
+          try {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userId, token, timestamp: Date.now() }));
+          } catch (e) {
+            console.warn('Failed to save auth data');
+          }
+        }
+
+        clearAuthData() {
+          try {
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+          } catch (e) {
+            console.warn('Failed to clear auth data');
+          }
+        }
+
+        getUsers() {
+          try {
+            const users = localStorage.getItem(USERS_STORAGE_KEY);
+            return users ? JSON.parse(users) : [];
+          } catch (e) {
+            return [];
+          }
+        }
+
+        saveUsers(users) {
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+          } catch (e) {
+            console.warn('Failed to save users');
+          }
+        }
+
+        getUserById(userId) {
+          const users = this.getUsers();
+          return users.find(user => user.id === userId);
+        }
+
+        getUserByEmail(email) {
+          const users = this.getUsers();
+          return users.find(user => user.email.toLowerCase() === email.toLowerCase());
+        }
+
+        generateUserId() {
+          return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        generateToken() {
+          return 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
+        }
+
+        register(name, email, password) {
+          // Validate inputs
+          if (!name || !email || !password) {
+            throw new Error('All fields are required');
+          }
+
+          if (password.length < 6) {
+            throw new Error('Password must be at least 6 characters long');
+          }
+
+          // Check if user already exists
+          if (this.getUserByEmail(email)) {
+            throw new Error('An account with this email already exists');
+          }
+
+          // Create new user
+          const users = this.getUsers();
+          const newUser = {
+            id: this.generateUserId(),
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            password: password, // In a real app, this would be hashed
+            createdAt: new Date().toISOString()
+          };
+
+          users.push(newUser);
+          this.saveUsers(users);
+          
+          return newUser;
+        }
+
+        login(email, password) {
+          const user = this.getUserByEmail(email);
+          if (!user) {
+            throw new Error('Invalid email or password');
+          }
+
+          if (user.password !== password) {
+            throw new Error('Invalid email or password');
+          }
+
+          const token = this.generateToken();
+          this.setAuthData(user.id, token);
+          this.currentUser = user;
+          
+          return user;
+        }
+
+        logout() {
+          this.currentUser = null;
+          this.clearAuthData();
+          this.showAuthModal();
+        }
+
+        showAuthModal() {
+          document.getElementById('auth-modal').style.display = 'flex';
+          document.getElementById('main-app').style.display = 'none';
+        }
+
+        showMainApp() {
+          document.getElementById('auth-modal').style.display = 'none';
+          document.getElementById('main-app').style.display = 'block';
+          if (this.currentUser) {
+            document.getElementById('user-name').textContent = this.currentUser.name;
+          }
+        }
+
+        getCurrentUserId() {
+          return this.currentUser ? this.currentUser.id : null;
+        }
+      }
+
+      // Initialize auth manager
+      const authManager = new AuthManager();
+
+      // Original app constants and variables
       const STORAGE_KEY = 'waterso_state_v1';
       const LEGACY_KEY = 'watersom_state_v1';
       const $ = id => document.getElementById(id);
@@ -344,8 +591,31 @@
       let trendChart = null;
 
       function migrateStorage(){ try{ const newVal = localStorage.getItem(STORAGE_KEY); const oldVal = localStorage.getItem(LEGACY_KEY); if(!newVal && oldVal) localStorage.setItem(STORAGE_KEY, oldVal); }catch(e){console.warn(e);} }
-      function loadState(){ migrateStorage(); try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : { records: [] }; }catch(e){ return { records: [] }; } }
-      function saveState(s){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch(e){ console.warn(e); } }
+      
+      function getUserStorageKey() {
+        const userId = authManager.getCurrentUserId();
+        return userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+      }
+      
+      function loadState(){ 
+        migrateStorage(); 
+        try{ 
+          const storageKey = getUserStorageKey();
+          const raw = localStorage.getItem(storageKey); 
+          return raw ? JSON.parse(raw) : { records: [] }; 
+        }catch(e){ 
+          return { records: [] }; 
+        } 
+      }
+      
+      function saveState(s){ 
+        try{ 
+          const storageKey = getUserStorageKey();
+          localStorage.setItem(storageKey, JSON.stringify(s)); 
+        }catch(e){ 
+          console.warn(e); 
+        } 
+      }
 
       // helper: read tier rows from DOM into sorted array of {limit, rate}
       function readTiersFromDOM(){
@@ -886,7 +1156,107 @@
   printBtn.addEventListener('click', ()=> printReport());
       yearSelect.addEventListener('change', updateYearSummary);
 
-  (function init(){ const state = loadState(); if(state.address) addressEl.value = state.address; if(state.meter) meterEl.value = state.meter; renderRecords(); updateYearSelect(); autoCalculateReads(); refreshTierVisibility(); })();
+      // Authentication event listeners
+      function setupAuthEventListeners() {
+        // Show/hide forms
+        document.getElementById('show-signup').addEventListener('click', () => {
+          document.getElementById('login-form').style.display = 'none';
+          document.getElementById('signup-form').style.display = 'block';
+          clearAuthErrors();
+        });
+
+        document.getElementById('show-login').addEventListener('click', () => {
+          document.getElementById('signup-form').style.display = 'none';
+          document.getElementById('login-form').style.display = 'block';
+          clearAuthErrors();
+        });
+
+        // Login form
+        document.getElementById('login-form-element').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const email = document.getElementById('login-email').value.trim();
+          const password = document.getElementById('login-password').value;
+          
+          try {
+            authManager.login(email, password);
+            authManager.showMainApp();
+            clearAuthErrors();
+            // Refresh data for new user
+            renderRecords();
+            updateYearSelect();
+            autoCalculateReads();
+          } catch (error) {
+            showAuthError('login-error', error.message);
+          }
+        });
+
+        // Signup form
+        document.getElementById('signup-form-element').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('signup-name').value.trim();
+          const email = document.getElementById('signup-email').value.trim();
+          const password = document.getElementById('signup-password').value;
+          const confirmPassword = document.getElementById('signup-confirm-password').value;
+          
+          try {
+            if (password !== confirmPassword) {
+              throw new Error('Passwords do not match');
+            }
+            
+            authManager.register(name, email, password);
+            authManager.login(email, password);
+            authManager.showMainApp();
+            clearAuthErrors();
+            // Initialize data for new user
+            renderRecords();
+            updateYearSelect();
+            autoCalculateReads();
+          } catch (error) {
+            showAuthError('signup-error', error.message);
+          }
+        });
+
+        // Logout button
+        document.getElementById('logout-btn').addEventListener('click', () => {
+          if (confirm('Are you sure you want to logout?')) {
+            authManager.logout();
+          }
+        });
+      }
+
+      function showAuthError(elementId, message) {
+        const errorEl = document.getElementById(elementId);
+        if (errorEl) {
+          errorEl.textContent = message;
+          errorEl.style.display = 'block';
+        }
+      }
+
+      function clearAuthErrors() {
+        ['login-error', 'signup-error'].forEach(id => {
+          const errorEl = document.getElementById(id);
+          if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.style.display = 'none';
+          }
+        });
+      }
+
+  (function init(){ 
+    // Setup authentication first
+    setupAuthEventListeners();
+    
+    // Only initialize app data if user is authenticated
+    if (authManager.currentUser) {
+      const state = loadState(); 
+      if(state.address) addressEl.value = state.address; 
+      if(state.meter) meterEl.value = state.meter; 
+      renderRecords(); 
+      updateYearSelect(); 
+      autoCalculateReads(); 
+      refreshTierVisibility();
+    }
+  })();
     </script>
   </body>
 </html>
