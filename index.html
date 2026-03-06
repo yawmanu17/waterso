@@ -1,1459 +1,2495 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>WaterBill — Track Your Water & Sewer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <!-- removed html2canvas/jsPDF: printing will use browser Print (single-page report) -->
-    <style>
-      /* Enhanced sea-blue theme variables for better UX */
-      :root{
-        /* Primary sea-blue palette */
-        --sea-950: #001c2e;
-        --sea-900: #003f5c;
-        --sea-800: #01445a;
-        --sea-700: #04607a;
-        --sea-600: #0ea5b7;
-        --sea-500: #06b6d4;
-        --sea-400: #4dd0e1;
-        --sea-300: #9feaf6;
-        --sea-200: #b3f0ff;
-        --sea-100: #e6fbfe;
-        --sea-50: #f0fcfe;
-        
-        /* Enhanced accent colors */
-        --emerald-500: #10b981;
-        --emerald-100: #d1fae5;
-        --amber-500: #f59e0b;
-        --amber-100: #fef3c7;
-        --red-500: #ef4444;
-        --red-100: #fee2e2;
-        --purple-500: #8b5cf6;
-        --purple-100: #ede9fe;
-        
-        /* Enhanced semantic colors */
-        --success: var(--emerald-500);
-        --success-light: var(--emerald-100);
-        --warning: var(--amber-500);
-        --warning-light: var(--amber-100);
-        --error: var(--red-500);
-        --error-light: var(--red-100);
-        --info: var(--sea-500);
-        --info-light: var(--sea-100);
-        
-        /* Enhanced text colors */
-        --text-primary: var(--sea-950);
-        --text-secondary: var(--sea-700);
-        --text-muted: var(--sea-600);
-        --text-light: var(--sea-400);
-        
-        /* Enhanced surface colors */
-        --surface-primary: #ffffff;
-        --surface-secondary: var(--sea-50);
-        --surface-elevated: #ffffff;
-        --surface-overlay: rgba(0, 63, 92, 0.8);
-        
-        /* Enhanced border colors */
-        --border-light: rgba(6, 182, 212, 0.12);
-        --border-medium: rgba(6, 182, 212, 0.25);
-        --border-strong: var(--sea-300);
-        
-        /* Legacy support */
-        --muted: var(--text-muted);
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OFORI — DMA Mapping & NRW Analyzer</title>
 
-      /* Enhanced page background and base text */
-      body {
-        background: linear-gradient(135deg, var(--sea-50) 0%, var(--surface-primary) 35%, var(--sea-100) 100%);
-        -webkit-font-smoothing: antialiased;
-        color: var(--text-primary);
-        min-height: 100vh;
-      }
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-      /* Responsive header/title and enhanced print button */
-      .header-title{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: calc(100% - 110px); }
-      #print-btn{ 
-        padding:6px 8px; font-size:12px; border-radius:8px; 
-        background: var(--surface-primary); 
-        color: var(--text-secondary); 
-        border: 1px solid var(--border-light);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: all 0.2s ease;
-      }
-      #print-btn:hover {
-        background: var(--sea-50);
-        border-color: var(--border-medium);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      }
-      @media (min-width:768px){
-        #print-btn{ padding:8px 16px; font-size:14px; }
-        .header-title{ max-width: none; }
-      }
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-      /* Enhanced logo box with richer gradients */
-      .logo-box { 
-        background: linear-gradient(135deg, var(--sea-600), var(--sea-500), var(--sea-400)); 
-        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
-      }
+  <!-- Leaflet (Mapping) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-      /* Enhanced header typography */
-      header h1 { color: var(--text-primary); }
-      header p { color: var(--text-muted); }
+  <style>
+    :root{
+      /* Industrial palette */
+      --ink-950:#071018;
+      --ink-900:#0b1b28;
+      --steel-800:#143447;
+      --steel-700:#1a4b66;
+      --steel-600:#1f6b8f;
+      --aqua-600:#0ea5b7;
+      --aqua-500:#06b6d4;
+      --aqua-300:#8be8f4;
 
-      /* Enhanced cards and panels with modern styling */
-      #app-root .bg-white { 
-        background: linear-gradient(145deg, var(--surface-primary), var(--surface-secondary)); 
-        border: 1px solid var(--border-light); 
-        backdrop-filter: blur(10px);
-      }
-      .rounded-xl { 
-        box-shadow: 0 8px 32px rgba(6, 100, 120, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04); 
-        border-radius: 16px;
-      }
-      .p-5 { color: var(--text-primary); }
-      .card-title { color: var(--text-secondary); font-weight: 700; }
+      --ok-500:#16a34a;
+      --warn-500:#f59e0b;
+      --bad-500:#ef4444;
 
-      /* Enhanced primary buttons with modern gradients and effects */
-      .sea-primary, #calc-btn, #save-month, #print-btn { 
-        background: linear-gradient(135deg, var(--sea-700), var(--sea-600), var(--sea-500)); 
-        color: #fff !important; 
-        border: none !important;
-        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
-        transition: all 0.3s ease;
-        border-radius: 8px;
-      }
-      #calc-btn:hover, #save-month:hover, #print-btn:hover, .sea-primary:hover { 
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(6, 182, 212, 0.4);
-        background: linear-gradient(135deg, var(--sea-600), var(--sea-500), var(--sea-400));
-      }
-      
-      /* Enhanced secondary buttons */
-      .no-print button:not(.sea-primary) { 
-        border: 1px solid var(--border-light); 
-        background: var(--surface-primary);
-        color: var(--text-secondary);
-        transition: all 0.2s ease;
-        border-radius: 6px;
-      }
-      .no-print button:not(.sea-primary):hover {
-        background: var(--surface-secondary);
-        border-color: var(--border-medium);
-        color: var(--text-primary);
-      }
+      --bg-0:#ffffff;
+      --bg-50:#f7fbfd;
+      --bg-100:#eef7fb;
 
-      /* Enhanced table readability with modern styling */
-      table th { 
-        background: linear-gradient(145deg, var(--surface-secondary), var(--sea-100)); 
-        color: var(--text-secondary); 
-        font-weight: 700;
-        border-bottom: 2px solid var(--border-medium);
-      }
-      table td { 
-        color: var(--text-primary);
-        border-bottom: 1px solid var(--border-light);
-      }
-      table tr:hover {
-        background: var(--surface-secondary);
-      }
+      --text: var(--ink-950);
+      --muted: #556574;
+      --border: rgba(6,182,212,0.16);
+      --border2: rgba(6,182,212,0.28);
+      --overlay: rgba(10,30,45,0.72);
+    }
 
-      /* Enhanced form labels and inputs */
-      label.block { 
-        color: var(--text-secondary); 
-        font-weight: 600; 
-      }
-      input, select { 
-        border-color: var(--border-light);
-        transition: all 0.2s ease;
-        background: var(--surface-primary);
-      }
-      input:focus, select:focus {
-        border-color: var(--sea-500);
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
-        outline: none;
-      }
-      input:hover, select:hover {
-        border-color: var(--border-medium);
-      }
+    body{
+      background: radial-gradient(1200px 600px at 20% 10%, var(--bg-100), transparent 50%),
+                  radial-gradient(900px 500px at 90% 25%, rgba(6,182,212,0.10), transparent 55%),
+                  linear-gradient(135deg, var(--bg-50), #fff 45%, var(--bg-100));
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
 
-      /* Enhanced result boxes with color coding */
-      .bg-sky-50 {
-        background: linear-gradient(145deg, var(--info-light), var(--sea-100)) !important;
-        border: 1px solid var(--border-light);
-      }
-      .bg-emerald-50 {
-        background: linear-gradient(145deg, var(--success-light), #dcfce7) !important;
-        border: 1px solid var(--border-light);
-      }
-      .bg-blue-50 {
-        background: linear-gradient(145deg, var(--info-light), var(--sea-100)) !important;
-        border: 1px solid var(--sea-300);
-      }
+    .brand-badge{
+      background: linear-gradient(135deg, var(--steel-700), var(--aqua-600), var(--aqua-500));
+      box-shadow: 0 12px 26px rgba(6,182,212,.20);
+    }
 
-      /* Enhanced footer */
-      footer { 
-        color: var(--text-muted); 
-        background: linear-gradient(145deg, var(--surface-secondary), transparent);
-        padding: 1rem;
-        border-radius: 12px;
-        margin-top: 2rem;
-      }
+    .card{
+      background: linear-gradient(180deg, var(--bg-0), var(--bg-50));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow:
+        0 14px 34px rgba(8, 18, 28, .08),
+        0 2px 10px rgba(8, 18, 28, .04);
+    }
 
-      /* Enhanced authentication modal */
-      #auth-modal {
-        backdrop-filter: blur(8px);
-        background: var(--surface-overlay);
-      }
-      #auth-modal .bg-white {
-        background: var(--surface-primary);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        border: 1px solid var(--border-light);
-      }
-      
-      /* Enhanced sewer section styling */
-      .sewer-section {
-        background: linear-gradient(145deg, var(--info-light), var(--sea-100));
-        border: 2px solid var(--sea-300);
-        border-radius: 12px;
-      }
-      
-      /* Enhanced status indicators */
-      .status-success { color: var(--success); }
-      .status-warning { color: var(--warning); }
-      .status-error { color: var(--error); }
-      .status-info { color: var(--info); }
-      
-      /* Enhanced interactive elements */
-      .interactive:hover {
-        transform: translateY(-1px);
-        transition: transform 0.2s ease;
-      }
-      
-      /* Modern glassmorphism effects */
-      .glass-effect {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-      @media print {
-        .no-print { display: none !important; }
-        /* hide everything by default */
-        body * { visibility: hidden !important; }
-        /* show print-report container and its descendants */
-        #print-report, #print-report * { visibility: visible !important; }
-        /* position report at top-left for printing */
-        #print-report { position: absolute; left: 0; top: 0; width: 100%; }
-        /* ensure high contrast for printed report */
-        #print-report { color: #04202b !important; background: #fff !important; }
-        #print-report table th { color: #04202b !important; }
-      }
-    </style>
-  </head>
-  <body class="bg-gradient-to-b from-sky-50 via-white to-gray-50 text-gray-900 p-6">
-    <div class="max-w-6xl mx-auto">
-      <!-- hidden print container; populated by printReport() and displayed only during print -->
-      <div id="print-report" style="display:none"></div>
-      
-      <!-- Authentication Modal -->
-      <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display:none">
-        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-          <div class="text-center mb-6">
-            <div class="w-16 h-16 logo-box text-white rounded-lg mx-auto mb-4 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-900">OFORI-Water Bill</h2>
-            <p class="text-gray-600">Access your water usage tracking</p>
+    .btn-primary{
+      background: linear-gradient(135deg, var(--steel-700), var(--aqua-600), var(--aqua-500));
+      color: #fff;
+      border: none;
+      box-shadow: 0 10px 24px rgba(6,182,212,.22);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 14px 30px rgba(6,182,212,.30); }
+
+    .btn-soft{
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--steel-700);
+      transition: all .12s ease;
+    }
+    .btn-soft:hover{ background: var(--bg-50); border-color: var(--border2); }
+
+    .pill{
+      background: rgba(6,182,212,.08);
+      border: 1px solid var(--border);
+      color: var(--steel-700);
+    }
+
+    input, select, textarea{ border-color: var(--border) !important; }
+    input:focus, select:focus, textarea:focus{
+      outline: none !important;
+      box-shadow: 0 0 0 3px rgba(6,182,212,.14) !important;
+      border-color: var(--aqua-500) !important;
+    }
+
+    #auth-modal{ backdrop-filter: blur(10px); background: var(--overlay); }
+    .modal-overlay{ backdrop-filter: blur(10px); background: var(--overlay); }
+
+    #map{ height: 520px; border-radius: 18px; border: 1px solid var(--border); }
+
+    #toast{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 60;
+      display: none;
+    }
+
+    /* Address suggestions dropdown */
+    .suggest-box{
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 70;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 16px 38px rgba(8,18,28,.14);
+      max-height: 240px;
+      overflow: auto;
+    }
+    .suggest-item{ padding: 10px 12px; cursor: pointer; }
+    .suggest-item:hover{ background: var(--bg-50); }
+
+    @media print{
+      .no-print{ display:none !important; }
+      body{ background:#fff !important; }
+      .card{ box-shadow:none !important; }
+    }
+  </style>
+</head>
+
+<body class="p-5 md:p-8">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- TOAST -->
+    <div id="toast" class="no-print">
+      <div class="bg-white border rounded-2xl shadow-xl px-4 py-3 flex items-start gap-3" style="border-color: rgba(6,182,212,.18)">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center brand-badge text-white font-bold">
+          OK
+        </div>
+        <div class="min-w-[240px]">
+          <div id="toast-title" class="font-bold text-slate-900">Saved</div>
+          <div id="toast-msg" class="text-sm text-slate-600 mt-0.5">Done.</div>
+        </div>
+        <button id="toast-close" class="text-slate-400 hover:text-slate-700 font-bold ml-2">✕</button>
+      </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="auth-modal" class="fixed inset-0 flex items-center justify-center z-50" style="display:none">
+      <div class="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-md border" style="border-color: rgba(6,182,212,.12);">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 brand-badge text-white rounded-xl mx-auto mb-4 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/>
+            </svg>
           </div>
+          <h2 class="text-2xl font-bold">OFORI — DMA Mapping & NRW Analyzer</h2>
+          <p class="text-sm text-gray-600">Field-to-Desk workflow for utilities</p>
+        </div>
 
-          <!-- Login Form -->
-          <div id="login-form">
-            <h3 class="text-xl font-semibold mb-4">Sign In</h3>
-            <form id="login-form-element" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input id="login-email" type="email" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input id="login-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password">
-              </div>
-              <div id="login-error" class="text-red-600 text-sm" style="display:none"></div>
-              <button type="submit" class="w-full sea-primary text-white py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity">
-                Sign In
-              </button>
-            </form>
-            <div class="mt-4 text-center">
-              <p class="text-gray-600">Don't have an account? 
-                <button id="show-signup" class="text-blue-600 hover:text-blue-800 font-medium">Sign up</button>
-              </p>
+        <!-- Login -->
+        <div id="login-form">
+          <h3 class="text-lg font-semibold mb-3">Sign In</h3>
+          <form id="login-form-element" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input id="login-email" type="email" required class="w-full p-3 border rounded-xl" placeholder="name@utility.com">
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input id="login-password" type="password" required class="w-full p-3 border rounded-xl" placeholder="Password">
+            </div>
+            <div id="login-error" class="text-red-600 text-sm" style="display:none"></div>
+            <button class="w-full btn-primary py-3 rounded-xl font-semibold" type="submit">Sign In</button>
+          </form>
+          <div class="mt-4 text-center text-sm">
+            <span class="text-gray-600">No account?</span>
+            <button id="show-signup" class="text-sky-800 font-semibold hover:underline" type="button">Create account</button>
           </div>
+        </div>
 
-          <!-- Signup Form -->
-          <div id="signup-form" style="display:none">
-            <h3 class="text-xl font-semibold mb-4">Create Account</h3>
-            <form id="signup-form-element" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input id="signup-name" type="text" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your full name">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input id="signup-email" type="email" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input id="signup-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Create a password">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input id="signup-confirm-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Confirm your password">
-              </div>
-              <div id="signup-error" class="text-red-600 text-sm" style="display:none"></div>
-              <button type="submit" class="w-full sea-primary text-white py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity">
-                Create Account
-              </button>
-            </form>
-            <div class="mt-4 text-center">
-              <p class="text-gray-600">Already have an account? 
-                <button id="show-login" class="text-blue-600 hover:text-blue-800 font-medium">Sign in</button>
-              </p>
+        <!-- Signup -->
+        <div id="signup-form" style="display:none">
+          <h3 class="text-lg font-semibold mb-3">Create Account</h3>
+          <form id="signup-form-element" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <input id="signup-name" type="text" required class="w-full p-3 border rounded-xl" placeholder="Full name">
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input id="signup-email" type="email" required class="w-full p-3 border rounded-xl" placeholder="name@utility.com">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input id="signup-password" type="password" required class="w-full p-3 border rounded-xl" placeholder="Minimum 6 characters">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+              <input id="signup-confirm-password" type="password" required class="w-full p-3 border rounded-xl" placeholder="Confirm password">
+            </div>
+            <div id="signup-error" class="text-red-600 text-sm" style="display:none"></div>
+            <button class="w-full btn-primary py-3 rounded-xl font-semibold" type="submit">Create Account</button>
+          </form>
+          <div class="mt-4 text-center text-sm">
+            <span class="text-gray-600">Already have an account?</span>
+            <button id="show-login" class="text-sky-800 font-semibold hover:underline" type="button">Sign in</button>
           </div>
         </div>
       </div>
-      
-      <!-- Main App Content (hidden when not authenticated) -->
-      <div id="main-app" style="display:none">
-        <header class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 logo-box text-white rounded-lg flex items-center justify-center shadow-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/></svg>
+    </div>
+
+    <!-- WORKSPACE MODAL (Desk vs Meter Reader) -->
+    <div id="workspace-modal" class="fixed inset-0 items-center justify-center z-50 modal-overlay" style="display:none">
+      <div class="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-2xl border" style="border-color: rgba(6,182,212,.12);">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-2xl font-bold">Select Workspace</h3>
+            <p class="text-sm text-slate-600 mt-1">Choose the interface for your role. You can switch anytime.</p>
+          </div>
+          <button id="workspace-close" class="btn-soft px-3 py-2 rounded-xl font-semibold">✕</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+          <button id="workspace-desk" class="card p-5 text-left hover:shadow-xl transition">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl brand-badge text-white flex items-center justify-center font-bold">DSK</div>
+              <div>
+                <div class="text-lg font-bold">Desk / Supervisor</div>
+                <div class="text-sm text-slate-600">DMA setup, NRW analysis, exceptions review, export</div>
+              </div>
+            </div>
+          </button>
+
+          <button id="workspace-field" class="card p-5 text-left hover:shadow-xl transition">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl brand-badge text-white flex items-center justify-center font-bold">MR</div>
+              <div>
+                <div class="text-lg font-bold">Meter Reader</div>
+                <div class="text-sm text-slate-600">Route, readings, flags/exceptions, navigation</div>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div class="mt-5 text-xs text-slate-500">
+          Note: This demo runs in local mode (browser storage). For enterprise deployment (multi-user sync), connect it to a backend (Firebase/SQL/GIS).
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD CUSTOMER MODAL -->
+    <div id="customer-modal" class="fixed inset-0 items-center justify-center z-50 modal-overlay" style="display:none">
+      <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl border" style="border-color: rgba(6,182,212,.12);">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold">Add Customer</h3>
+            <p class="text-sm text-slate-600 mt-1">Address entry supports search and automatic pin placement.</p>
+          </div>
+          <button id="customer-modal-close" class="btn-soft px-3 py-2 rounded-xl font-semibold">✕</button>
+        </div>
+
+        <form id="customer-form" class="mt-4 space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Account number <span class="text-red-500">*</span></label>
+              <input id="cust-acct" class="w-full p-3 border rounded-xl" required placeholder="Account number">
             </div>
             <div>
-              <h1 class="text-2xl font-bold header-title">OFORI-Water Bill</h1>
-              <p class="text-sm text-gray-600">Water Monthly Usage & Yearly Analysis</p>
-              <p class="text-sm font-semibold text-blue-700 mt-1">Welcome, <span id="user-name" class="font-bold text-blue-800">User</span>!</p>
-              <!-- Name chosen: OFORI (from Solomon/Elizabeth/Andrew) -->
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Meter number</label>
+              <input id="cust-meter" class="w-full p-3 border rounded-xl" placeholder="Meter number">
             </div>
           </div>
 
-          <div class="flex items-center gap-3 no-print">
-            <button id="logout-btn" class="px-4 py-2 text-sm font-medium text-sea-700 bg-gradient-to-r from-sea-50 to-white border border-sea-200 rounded-lg hover:from-sea-100 hover:to-sea-50 hover:border-sea-300 transition-all duration-200 shadow-sm hover:shadow-md">
-              <span class="mr-1">👋</span>
-              Logout
-            </button>
-            <button id="print-btn" class="px-4 py-2 bg-white border rounded-lg font-medium">Print / Save as PDF</button>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Customer name</label>
+            <input id="cust-name" class="w-full p-3 border rounded-xl" placeholder="Customer name">
           </div>
-        </header>
 
-      <main class="grid grid-cols-1 md:grid-cols-3 gap-6" id="app-root">
-        <section class="col-span-1 bg-white p-5 rounded-xl shadow-lg">
-          <h2 class="font-semibold mb-4 text-lg">Customer & Meter</h2>
-          <label class="block text-sm">Customer Address <span class="text-xs text-gray-400">(for reports)</span></label>
-          <input id="cust-address" class="w-full p-2 border rounded mb-3" placeholder="123 Main St, City, State" />
+          <div class="relative">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Service address</label>
+            <input id="cust-address" class="w-full p-3 border rounded-xl" placeholder="Street, City, State ZIP" autocomplete="off">
+            <div id="cust-suggest" class="suggest-box" style="display:none"></div>
+            <div class="text-xs text-slate-500 mt-1">Typing will suggest addresses. Saving will auto-pin if GPS is blank.</div>
+          </div>
 
-          <label class="block text-sm">Meter Number</label>
-          <input id="meter-number" class="w-full p-2 border rounded mb-3" placeholder="Meter #" />
-
-          <h3 class="font-semibold mt-2 mb-2">Monthly Readings (CCF)</h3>
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm">Last Read Date</label>
-              <input id="last-read-date" type="date" class="w-full p-2 border rounded mb-2" />
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Latitude</label>
+              <input id="cust-lat" type="number" step="0.000001" class="w-full p-3 border rounded-xl" placeholder="Latitude">
             </div>
             <div>
-              <label class="block text-sm">Current Read Date</label>
-              <input id="current-read-date" type="date" class="w-full p-2 border rounded mb-2" />
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Longitude</label>
+              <input id="cust-lon" type="number" step="0.000001" class="w-full p-3 border rounded-xl" placeholder="Longitude">
             </div>
           </div>
 
-          <label class="block text-sm">Last Read (CCF)</label>
-          <input id="last-read" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0" />
-
-          <label class="block text-sm">Current Read (CCF)</label>
-          <input id="current-read" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0" />
-          <div id="read-error" class="text-sm text-red-600 mt-1" style="display:none"></div>
-
-          <div class="mt-3 text-sm space-y-2 bg-sky-50 p-3 rounded">
-            <p class="text-gray-700"><strong>CCF Used:</strong> <span id="ccf-used" class="font-medium">0.00</span></p>
-            <p class="text-gray-700"><strong>Gallons:</strong> <span id="gallons-used" class="font-medium">0</span></p>
-          </div>
-
-          <hr class="my-4" />
-
-          <h3 class="font-semibold mb-2">Charges</h3>
-          <label class="block text-sm">Water Base Service Charge</label>
-          <input id="water-base" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
-
-          <!-- Water charge mode below base charge -->
-          <div class="mt-2 mb-2">
-            <label class="block text-sm">Water Charge Mode</label>
-            <div class="flex gap-4 items-center text-sm mt-1">
-              <label class="inline-flex items-center"><input type="radio" name="water-charge-mode" id="water-mode-flat" value="flat" checked class="mr-2" />Charge by flat water rate per CCF</label>
-              <label class="inline-flex items-center"><input type="radio" name="water-charge-mode" id="water-mode-tiered" value="tiered" class="mr-2" />Charge based on tiers</label>
-            </div>
-          </div>
-
-          <!-- Water rate (shown for flat mode) -->
-          <div id="water-rate-container" class="mb-2">
-            <label class="block text-sm">Water Rate (per CCF)</label>
-            <input id="water-rate" type="number" min="0" step="0.01" class="w-full p-2 border rounded" value="3.50" />
-          </div>
-
-          <!-- Tier inputs (shown for tiered mode) - dynamic add/remove -->
-          <div id="tiers-container" class="hidden bg-white p-3 rounded border mb-2">
-            <p class="text-xs text-gray-600 mb-2">Define cumulative tiers (usage billed across tiers). Enter the upper limit for each tier and its rate. Use Add Tier to insert more tiers.</p>
-            <div id="tiers-list" class="space-y-2"></div>
-            <div class="flex gap-2 mt-2">
-              <button id="add-tier" type="button" class="px-3 py-1 bg-white border rounded text-sm">Add Tier</button>
-              <button id="reset-tiers" type="button" class="px-3 py-1 bg-white border rounded text-sm">Reset Default 3</button>
-            </div>
-
-            <template id="tier-row-template">
-              <div class="grid grid-cols-12 gap-2 items-center">
-                <div class="col-span-3 text-sm text-gray-700">Tier <span class="tier-index">#</span></div>
-                <div class="col-span-4">
-                  <input type="number" class="tier-limit p-2 border rounded w-full" value="0" min="0" step="1" />
-                </div>
-                <div class="col-span-4">
-                  <input type="number" class="tier-rate p-2 border rounded w-full" value="0.00" min="0" step="0.01" />
-                </div>
-                <div class="col-span-1 text-right">
-                  <button type="button" class="remove-tier text-red-500">Remove</button>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- Utility tax percentage -->
-          <label class="block text-sm">Utility Tax Rate (%)</label>
-          <input id="utility-tax" type="number" min="0" step="0.01" class="w-full p-2 border rounded mb-2" value="0.00" />
-
-          <hr class="my-4" />
-
-          <h3 class="font-semibold mb-3 text-lg card-title text-sea-700">Sewer Services</h3>
-          <div class="mb-4 p-4 glass-effect sewer-section interactive">
-            <label class="inline-flex items-center cursor-pointer">
-              <input id="sewer-enabled" type="checkbox" class="w-5 h-5 mr-3 text-sea-600 bg-white border-sea-300 rounded focus:ring-sea-500 focus:ring-2" />
-              <span class="text-base font-semibold text-sea-800">Include sewer charges for this account</span>
-            </label>
-            <p class="text-sm text-sea-600 mt-2 ml-8">Check this box if your water bill includes sewer service charges</p>
-          </div>
-
-          <div id="sewer-fields" class="hidden glass-effect sewer-section p-5 mb-4">
-            <h4 class="font-semibold text-sea-800 mb-4 flex items-center">
-              <span class="w-2 h-2 bg-sea-500 rounded-full mr-2"></span>
-              Sewer Service Charges
-            </h4>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-semibold text-sea-700 mb-2">Sewer Base Service Charge</label>
-                <input id="sewer-base" type="number" min="0" step="0.01" class="w-full p-3 border-2 border-sea-200 rounded-lg focus:ring-2 focus:ring-sea-500 focus:border-sea-500 transition-all duration-200" value="0.00" />
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-sea-700 mb-2">Sewer Rate (per CCF)</label>
-                <input id="sewer-rate" type="number" min="0" step="0.01" class="w-full p-3 border-2 border-sea-200 rounded-lg focus:ring-2 focus:ring-sea-500 focus:border-sea-500 transition-all duration-200" value="2.00" />
-              </div>
-            </div>
-          </div>
-
-          <!-- removed old tier checkbox area (moved above water rate) -->
-
-          <label class="block text-sm">Billing Month</label>
-          <input id="billing-month" type="month" class="w-full p-2 border rounded mb-3" />
-          <div id="billing-month-error" class="text-sm text-red-600 mt-1" style="display:none"></div>
-
-          <div class="flex gap-3 mt-6">
-            <button id="calc-btn" class="flex-1 sea-primary text-white p-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center">
-              <span class="mr-2">🧮</span>
-              Calculate
+          <div class="flex gap-2 pt-2">
+            <button id="cust-save-btn" class="btn-primary flex-1 py-3 rounded-xl font-semibold" type="submit">
+              <span id="cust-save-text">Save customer</span>
             </button>
-            <button id="save-month" class="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center hover:from-emerald-500 hover:to-emerald-400">
-              <span class="mr-2">💾</span>
-              Save Month
-            </button>
+            <button id="customer-modal-cancel" class="btn-soft px-4 py-3 rounded-xl font-semibold" type="button">Cancel</button>
           </div>
-        </section>
 
-        <aside class="col-span-1 md:col-span-2 space-y-4">
-          <div class="glass-effect p-6 rounded-xl shadow-xl interactive">
-            <div class="flex items-start justify-between mb-6">
-              <div>
-                <h3 class="font-bold text-xl text-sea-800">Main Results</h3>
-                <p class="text-sm text-sea-600 mt-1">Summary for the selected billing period</p>
-              </div>
-              <div class="text-right text-xs text-sea-500 bg-sea-50 px-3 py-1 rounded-full">
-                <span class="font-medium">Unit:</span> CCF / Gallons
-              </div>
+          <div id="customer-form-error" class="text-red-700 text-sm" style="display:none"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ADD RESERVOIR MODAL -->
+    <div id="reservoir-modal" class="fixed inset-0 items-center justify-center z-50 modal-overlay" style="display:none">
+      <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl border" style="border-color: rgba(6,182,212,.12);">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold">Add Reservoir / Tank</h3>
+            <p class="text-sm text-slate-600 mt-1">Pins appear on the DMA map for navigation.</p>
+          </div>
+          <button id="reservoir-modal-close" class="btn-soft px-3 py-2 rounded-xl font-semibold">✕</button>
+        </div>
+
+        <form id="reservoir-form" class="mt-4 space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+              <input id="res-name" class="w-full p-3 border rounded-xl" required placeholder="Reservoir / tank name">
             </div>
-
-            <div class="mt-6 grid grid-cols-3 gap-4">
-              <div class="p-4 bg-gradient-to-br from-sea-50 to-sea-100 rounded-xl border border-sea-200 interactive">
-                <div class="text-xs text-sea-600 font-semibold uppercase tracking-wide">CCF Used</div>
-                <div id="result-ccf" class="text-2xl font-bold text-sea-800 mt-1">0.00</div>
-              </div>
-              <div class="p-4 bg-gradient-to-br from-sea-50 to-sea-100 rounded-xl border border-sea-200 interactive">
-                <div class="text-xs text-sea-600 font-semibold uppercase tracking-wide">Gallons</div>
-                <div id="result-gal" class="text-2xl font-bold text-sea-800 mt-1">0</div>
-              </div>
-              <div class="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 interactive">
-                <div class="text-xs text-emerald-600 font-semibold uppercase tracking-wide">Total Cost</div>
-                <div id="result-total" class="text-2xl font-bold text-emerald-800 mt-1">$0.00</div>
-              </div>
-            </div>
-
-            <div class="mt-6 grid grid-cols-2 gap-4">
-              <div class="p-4 glass-effect interactive rounded-xl border border-sea-200">
-                <div class="text-xs text-sea-700 font-semibold uppercase tracking-wider">Water Charge</div>
-                <div id="result-water" class="text-xl font-bold text-sea-800 mt-1">$0.00</div>
-                <div class="w-full h-1 bg-sea-200 rounded-full mt-2">
-                  <div class="h-1 bg-gradient-to-r from-sea-500 to-sea-400 rounded-full" style="width: 0%"></div>
-                </div>
-              </div>
-              <div id="sewer-result-container" class="p-4 glass-effect interactive rounded-xl border-2 border-sea-300 bg-gradient-to-br from-sea-50 to-sea-100">
-                <div class="text-xs text-sea-700 font-semibold uppercase tracking-wider">Sewer Charge</div>
-                <div id="result-sewer" class="text-xl font-bold text-sea-800 mt-1">$0.00</div>
-                <div class="w-full h-1 bg-sea-200 rounded-full mt-2">
-                  <div class="h-1 bg-gradient-to-r from-sea-500 to-sea-400 rounded-full" style="width: 0%"></div>
-                </div>
-              </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
+              <select id="res-type" class="w-full p-3 border rounded-xl">
+                <option value="Elevated">Elevated</option>
+                <option value="Ground">Ground</option>
+                <option value="Clearwell">Clearwell</option>
+                <option value="Reservoir">Reservoir</option>
+              </select>
             </div>
           </div>
 
-          <div class="bg-white p-5 rounded-xl shadow-lg">
-            <div class="flex items-center justify-between">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Capacity (gal)</label>
+              <input id="res-cap" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" placeholder="Capacity (gallons)">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Zone served</label>
+              <input id="res-zone" class="w-full p-3 border rounded-xl" placeholder="Zone / PRV / pressure zone">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Latitude <span class="text-red-500">*</span></label>
+              <input id="res-lat" type="number" step="0.000001" class="w-full p-3 border rounded-xl" required placeholder="Latitude">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Longitude <span class="text-red-500">*</span></label>
+              <input id="res-lon" type="number" step="0.000001" class="w-full p-3 border rounded-xl" required placeholder="Longitude">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+            <textarea id="res-notes" class="w-full p-3 border rounded-xl" rows="2" placeholder="Notes"></textarea>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button class="btn-primary flex-1 py-3 rounded-xl font-semibold" type="submit">Save reservoir</button>
+            <button id="reservoir-modal-cancel" class="btn-soft px-4 py-3 rounded-xl font-semibold" type="button">Cancel</button>
+          </div>
+
+          <div id="reservoir-form-error" class="text-red-700 text-sm" style="display:none"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div id="main-app" style="display:none">
+
+      <!-- TOP BAR -->
+      <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 brand-badge text-white rounded-xl flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M12 2s5 5.5 5 9a5 5 0 11-10 0c0-3.5 5-9 5-9z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold">OFORI — DMA Mapping & NRW Analyzer</h1>
+            <div class="text-sm text-gray-600">
+              <span class="font-semibold text-slate-900" id="user-name">User</span>
+              <span class="mx-2 text-gray-300">•</span>
+              <span id="workspace-pill" class="pill px-2 py-1 rounded-full text-xs font-semibold">Workspace</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 no-print">
+          <button id="workspace-btn" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold" title="Switch between Desk and Meter Reader views">
+            Workspace
+          </button>
+
+          <button id="sync-hint" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold" title="This demo stores data locally per user in this browser.">
+            Local mode
+          </button>
+
+          <button id="print-btn" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">
+            Print
+          </button>
+
+          <button id="logout-btn" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <!-- NAV (Desk vs Field separated) -->
+      <nav class="no-print card p-3 mb-6">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Desk tabs -->
+          <button class="tab-btn btn-primary px-4 py-2 rounded-xl text-sm font-semibold" data-scope="desk" data-tab="tab-dashboard">Dashboard</button>
+          <button class="tab-btn btn-soft px-4 py-2 rounded-xl text-sm font-semibold" data-scope="desk" data-tab="tab-desk">Desk / NRW</button>
+          <button class="tab-btn btn-soft px-4 py-2 rounded-xl text-sm font-semibold" data-scope="desk" data-tab="tab-map">Map</button>
+          <button class="tab-btn btn-soft px-4 py-2 rounded-xl text-sm font-semibold" data-scope="desk" data-tab="tab-data">Import / Export</button>
+
+          <!-- Field tabs -->
+          <button class="tab-btn btn-soft px-4 py-2 rounded-xl text-sm font-semibold" data-scope="field" data-tab="tab-field">Meter Reader</button>
+          <button class="tab-btn btn-soft px-4 py-2 rounded-xl text-sm font-semibold" data-scope="field" data-tab="tab-map">Map</button>
+
+          <div class="ml-auto flex items-center gap-2">
+            <label class="text-xs text-gray-500 font-semibold">Active DMA</label>
+            <select id="dma-select" class="p-2 border rounded-xl text-sm"></select>
+            <button id="dma-new" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">New DMA</button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- DASHBOARD -->
+      <section id="tab-dashboard" class="tab-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div class="card p-5 lg:col-span-2">
+            <div class="flex items-start justify-between">
               <div>
-                <h3 class="font-semibold">Saved Months</h3>
-                <p class="text-sm text-gray-500">Click Save to record the month.</p>
+                <h2 class="text-xl font-bold text-slate-900">Performance Summary</h2>
+                <p class="text-sm text-gray-600 mt-1">System input, authorized consumption, NRW and estimated cost.</p>
+              </div>
+              <div class="text-xs text-gray-500 bg-slate-50 border rounded-full px-3 py-1" style="border-color: rgba(6,182,212,.12)">
+                Units: gallons and dollars
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(6,182,212,.15);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">System Input</div>
+                <div id="kpi-siv" class="text-2xl font-bold mt-1">0</div>
+                <div id="kpi-siv-sub" class="text-xs text-gray-500 mt-1">gal</div>
+              </div>
+
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(22,163,74,.20);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Billed Authorized</div>
+                <div id="kpi-billed" class="text-2xl font-bold mt-1">0</div>
+                <div class="text-xs text-gray-500 mt-1">gal</div>
+              </div>
+
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(245,158,11,.22);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">NRW</div>
+                <div id="kpi-nrw" class="text-2xl font-bold mt-1">0</div>
+                <div id="kpi-nrw-sub" class="text-xs text-gray-500 mt-1">0%</div>
+              </div>
+
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(239,68,68,.18);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">NRW Cost</div>
+                <div id="kpi-nrw-cost" class="text-2xl font-bold mt-1">$0.00</div>
+                <div class="text-xs text-gray-500 mt-1">estimated</div>
+              </div>
+            </div>
+
+            <div class="mt-5">
+              <canvas id="dashboard-chart" height="120"></canvas>
+            </div>
+          </div>
+
+          <div class="card p-5">
+            <h2 class="text-xl font-bold">Operational Snapshot</h2>
+            <p class="text-sm text-gray-600 mt-1">Latest route status for the active DMA.</p>
+
+            <div class="mt-4 space-y-3">
+              <div class="p-4 rounded-xl bg-white border" style="border-color: rgba(6,182,212,.15);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Latest Route</div>
+                <div id="today-route" class="text-lg font-bold mt-1">Not available</div>
+                <div class="text-xs text-gray-500 mt-1">Stops: <span id="today-stops">0</span></div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-white border" style="border-color: rgba(245,158,11,.22);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Exceptions</div>
+                <div id="today-exc" class="text-lg font-bold mt-1">0</div>
+                <div class="text-xs text-gray-500 mt-1">Requires desk review</div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-white border" style="border-color: rgba(22,163,74,.20);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Readings Submitted</div>
+                <div id="today-done" class="text-lg font-bold mt-1">0</div>
+                <div class="text-xs text-gray-500 mt-1">Count in latest submission</div>
+              </div>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 gap-2">
+              <button class="btn-primary w-full py-3 rounded-xl font-semibold" id="go-field">Open Meter Reader</button>
+              <button class="btn-soft w-full py-3 rounded-xl font-semibold" id="go-desk">Open Desk Review</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FIELD TAB -->
+      <section id="tab-field" class="tab-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div class="card p-5 lg:col-span-1">
+            <h2 class="text-xl font-bold">Meter Reader Workspace</h2>
+            <p class="text-sm text-gray-600 mt-1">Start a route, record readings, submit to desk.</p>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Route name</label>
+                <input id="field-route" class="w-full p-3 border rounded-xl" placeholder="Route name">
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Reader ID</label>
+                <input id="field-reader" class="w-full p-3 border rounded-xl" placeholder="Reader ID">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Billing month</label>
+                  <input id="field-month" type="month" class="w-full p-3 border rounded-xl">
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Reading unit</label>
+                  <select id="field-unit" class="w-full p-3 border rounded-xl">
+                    <option value="CCF" selected>CCF</option>
+                    <option value="GAL">Gallons</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex gap-2 pt-2">
+                <button id="field-start" class="btn-primary flex-1 py-3 rounded-xl font-semibold">Start route</button>
+                <button id="field-open-route" class="btn-soft px-4 py-3 rounded-xl font-semibold">Open route map</button>
+              </div>
+
+              <div class="flex gap-2">
+                <button id="field-exc-list" class="btn-soft flex-1 py-3 rounded-xl font-semibold">View exceptions</button>
+                <button id="field-add-customer" class="btn-soft flex-1 py-3 rounded-xl font-semibold">Add customer</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-5 lg:col-span-2">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-bold">Reading Screen</h2>
+                <p class="text-sm text-gray-600 mt-1">One stop at a time with navigation and flags.</p>
               </div>
               <div class="flex items-center gap-2">
-                <label class="text-sm text-gray-500">Year</label>
-                <select id="year-select" class="p-2 border rounded text-sm"></select>
+                <span class="pill px-3 py-1 rounded-full text-xs font-semibold">Stop <span id="field-stop-idx">0</span>/<span id="field-stop-total">0</span></span>
+                <button id="field-prev" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Previous</button>
+                <button id="field-next" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Next</button>
               </div>
             </div>
 
-            <div class="mt-4 overflow-x-auto">
-              <table class="w-full text-sm border-collapse">
-                <thead class="bg-gray-100"><tr>
-                  <th class="p-2 text-left">Month</th>
-                  <th class="p-2 text-right">CCF</th>
-                  <th class="p-2 text-right">Gallons</th>
-                  <th class="p-2 text-right">Total $</th>
-                  <th class="p-2 text-center">Actions</th>
-                </tr></thead>
-                <tbody id="records-body"></tbody>
-              </table>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(6,182,212,.15);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Customer</div>
+                <div class="text-lg font-bold mt-1" id="field-cust-name">—</div>
+                <div class="text-sm text-gray-700 mt-1" id="field-cust-address">—</div>
+                <div class="text-xs text-gray-500 mt-2">
+                  Account: <span id="field-cust-acct">—</span> • Meter: <span id="field-cust-meter">—</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button id="field-nav" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Navigate</button>
+                  <button id="field-mark-flag" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Flag for review</button>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(22,163,74,.20);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Enter reading</div>
+
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Last read</label>
+                    <input id="field-last" type="number" min="0" step="0.01" class="w-full p-3 border rounded-xl">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Current read</label>
+                    <input id="field-current" type="number" min="0" step="0.01" class="w-full p-3 border rounded-xl" placeholder="Current read">
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                    <select id="field-status" class="w-full p-3 border rounded-xl">
+                      <option value="ACTUAL" selected>Actual</option>
+                      <option value="ESTIMATE">Estimate</option>
+                      <option value="NO_ACCESS">No access</option>
+                      <option value="ROLL_OVER">Reset / roll-over</option>
+                      <option value="METER_REPLACED">Meter replaced</option>
+                      <option value="BROKEN">Broken / unreadable</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                    <input id="field-notes" class="w-full p-3 border rounded-xl" placeholder="Notes">
+                  </div>
+                </div>
+
+                <div id="field-read-error" class="text-sm text-red-600 mt-2" style="display:none"></div>
+
+                <div class="mt-4 p-3 rounded-xl bg-slate-50 border text-sm" style="border-color: rgba(6,182,212,.12);">
+                  <div class="flex items-center justify-between">
+                    <div><span class="font-semibold">Usage:</span> <span id="field-usage">0.00</span> <span id="field-usage-unit">CCF</span></div>
+                    <div><span class="font-semibold">Gallons:</span> <span id="field-usage-gal">0</span></div>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex gap-2">
+                  <button id="field-save-reading" class="btn-primary flex-1 py-3 rounded-xl font-semibold">Save stop</button>
+                  <button id="field-skip" class="btn-soft px-4 py-3 rounded-xl font-semibold">Skip</button>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-5" style="border-color: rgba(6,182,212,.12);">
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-bold">Route Summary</h3>
+                <p class="text-sm text-gray-600">Totals are transferred to Desk when submitted.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="field-submit-route" class="btn-primary px-4 py-3 rounded-xl font-semibold">Submit to desk</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(6,182,212,.15);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Stops</div>
+                <div id="field-kpi-stops" class="text-xl font-bold mt-1">0</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(22,163,74,.20);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Billed volume</div>
+                <div id="field-kpi-billed" class="text-xl font-bold mt-1">0</div>
+                <div class="text-xs text-gray-500 mt-1">gal</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(245,158,11,.22);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Exceptions</div>
+                <div id="field-kpi-exc" class="text-xl font-bold mt-1">0</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(239,68,68,.18);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Flags</div>
+                <div id="field-kpi-flag" class="text-xl font-bold mt-1">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DESK / NRW TAB -->
+      <section id="tab-desk" class="tab-panel hidden">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+          <!-- DMA CONFIG -->
+          <div class="card p-5 xl:col-span-1">
+            <div class="flex items-start justify-between">
+              <div>
+                <h2 class="text-xl font-bold">DMA Configuration</h2>
+                <p class="text-sm text-gray-600 mt-1">System input, assumptions, and reference parameters.</p>
+              </div>
+              <button id="dma-save" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">Save DMA</button>
+            </div>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">DMA name</label>
+                <input id="dma-name" class="w-full p-3 border rounded-xl" placeholder="DMA name">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">DMA area (sq mi)</label>
+                  <input id="dma-size" type="number" min="0" step="0.01" class="w-full p-3 border rounded-xl" placeholder="Area">
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Connections</label>
+                  <input id="dma-connections" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" placeholder="Connections">
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-50 border text-sm text-gray-700" style="border-color: rgba(6,182,212,.12);">
+                <div class="font-semibold mb-2">System Input Volume (SIV)</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Avg inflow (MGD)</label>
+                    <input id="dma-pumpage-mgd" type="number" min="0" step="0.001" class="w-full p-3 border rounded-xl" placeholder="MGD">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Period (days)</label>
+                    <input id="dma-period-days" type="number" min="1" step="1" class="w-full p-3 border rounded-xl" value="30">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Boundary meter inflow (gal)</label>
+                    <input id="dma-boundary-gal" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" placeholder="Optional override">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Average pressure (psi)</label>
+                    <input id="dma-pressure" type="number" min="0" step="0.1" class="w-full p-3 border rounded-xl" placeholder="Pressure">
+                  </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                  If boundary meter inflow is provided, it overrides MGD × days.
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white border" style="border-color: rgba(6,182,212,.12);">
+                <div class="font-semibold text-sm mb-2">Storage / Reservoirs</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Count</label>
+                    <input id="dma-tank-count" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" value="0">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Total storage (gal)</label>
+                    <input id="dma-tank-vol-gal" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" value="0">
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white border" style="border-color: rgba(22,163,74,.18);">
+                <div class="font-semibold text-sm mb-2">Cost assumptions</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Production cost ($/1,000 gal)</label>
+                    <input id="dma-cost-per-kgal" type="number" min="0" step="0.01" class="w-full p-3 border rounded-xl" value="3.50">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Billing unit</label>
+                    <select id="dma-billing-unit" class="w-full p-3 border rounded-xl">
+                      <option value="CCF" selected>CCF</option>
+                      <option value="GAL">Gallons</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Unbilled authorized (gal)</label>
+                    <input id="dma-unbilled-gal" type="number" min="0" step="1" class="w-full p-3 border rounded-xl" value="0">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Apparent loss (%)</label>
+                    <input id="dma-apparent-pct" type="number" min="0" step="0.1" class="w-full p-3 border rounded-xl" placeholder="Optional">
+                  </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                  NRW cost uses production cost. Billing model is reference only.
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button id="desk-add-customer" class="btn-soft flex-1 py-3 rounded-xl font-semibold">Add customer</button>
+                <button id="desk-add-reservoir" class="btn-soft flex-1 py-3 rounded-xl font-semibold">Add reservoir</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RESULTS + REVIEW -->
+          <div class="card p-5 xl:col-span-2">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-bold">NRW Analysis</h2>
+                <p class="text-sm text-gray-600 mt-1">SIV and authorized volumes produce NRW and estimated cost.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="desk-recalc" class="btn-primary px-4 py-2 rounded-xl text-sm font-semibold">Recalculate</button>
+                <button id="desk-export-report" class="btn-soft px-4 py-2 rounded-xl text-sm font-semibold">Export report</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(6,182,212,.15);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">SIV (gal)</div>
+                <div id="desk-siv" class="text-xl font-bold mt-1">0</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(22,163,74,.20);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">Billed (gal)</div>
+                <div id="desk-billed" class="text-xl font-bold mt-1">0</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(245,158,11,.22);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">NRW (gal)</div>
+                <div id="desk-nrw" class="text-xl font-bold mt-1">0</div>
+                <div id="desk-nrw-pct" class="text-xs text-gray-500 mt-1">0%</div>
+              </div>
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(239,68,68,.18);">
+                <div class="text-xs text-gray-500 font-semibold uppercase">NRW cost</div>
+                <div id="desk-nrw-cost" class="text-xl font-bold mt-1">$0.00</div>
+              </div>
+            </div>
+
+            <hr class="my-5" style="border-color: rgba(6,182,212,.12);">
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <!-- Aggregation -->
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(22,163,74,.20);">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 class="text-lg font-bold">Field submission</h3>
+                    <p class="text-sm text-gray-600 mt-1">Latest submitted route drives desk totals.</p>
+                  </div>
+                  <button id="desk-open-route" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Open route map</button>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                  <div class="p-3 rounded-xl bg-slate-50 border" style="border-color: rgba(6,182,212,.12);">
+                    <div class="text-xs text-gray-500 font-semibold uppercase">Latest route</div>
+                    <div id="desk-latest-route" class="text-base font-bold mt-1">—</div>
+                    <div class="text-xs text-gray-500 mt-1">Month: <span id="desk-latest-month">—</span></div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-50 border" style="border-color: rgba(6,182,212,.12);">
+                    <div class="text-xs text-gray-500 font-semibold uppercase">Exceptions / flags</div>
+                    <div class="text-base font-bold mt-1">
+                      <span id="desk-latest-exc">0</span> • <span id="desk-latest-flag">0</span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">Desk review recommended</div>
+                  </div>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                  <div class="p-3 rounded-xl bg-white border" style="border-color: rgba(22,163,74,.20);">
+                    <div class="text-xs text-gray-500 font-semibold uppercase">Billed authorized</div>
+                    <div id="desk-field-billed-gal" class="text-2xl font-bold mt-1">0</div>
+                    <div class="text-xs text-gray-500 mt-1">gal</div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-white border" style="border-color: rgba(245,158,11,.22);">
+                    <div class="text-xs text-gray-500 font-semibold uppercase">Unbilled authorized</div>
+                    <div id="desk-unbilled-gal" class="text-2xl font-bold mt-1">0</div>
+                    <div class="text-xs text-gray-500 mt-1">gal</div>
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <canvas id="desk-chart" height="140"></canvas>
+                </div>
+              </div>
+
+              <!-- Exceptions review table -->
+              <div class="p-4 rounded-xl border bg-white" style="border-color: rgba(245,158,11,.22);">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 class="text-lg font-bold">Exceptions & flags</h3>
+                    <p class="text-sm text-gray-600 mt-1">Priority list from latest route.</p>
+                  </div>
+                  <button id="desk-export-exc" class="btn-soft px-3 py-2 rounded-xl text-sm font-semibold">Export CSV</button>
+                </div>
+
+                <div class="mt-3 overflow-auto border rounded-xl bg-white" style="border-color: rgba(6,182,212,.12); max-height: 320px;">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-700 sticky top-0">
+                      <tr>
+                        <th class="text-left px-3 py-2">Account</th>
+                        <th class="text-left px-3 py-2">Customer</th>
+                        <th class="text-left px-3 py-2">Status</th>
+                        <th class="text-left px-3 py-2">Usage (gal)</th>
+                        <th class="text-left px-3 py-2">Flag</th>
+                      </tr>
+                    </thead>
+                    <tbody id="desk-exc-tbody">
+                      <tr><td class="px-3 py-3 text-slate-500" colspan="5">No exceptions yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="mt-3 text-xs text-slate-500">
+                  Focus on no access, broken, reset, and flagged high usage.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- MAP TAB -->
+      <section id="tab-map" class="tab-panel hidden">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div class="card p-5 xl:col-span-1">
+            <h2 class="text-xl font-bold">Map Controls</h2>
+            <p class="text-sm text-gray-600 mt-1">Customers and reservoirs with navigation and routing.</p>
+
+            <div class="mt-4 space-y-3">
+              <div class="p-3 rounded-xl bg-white border" style="border-color: rgba(6,182,212,.12);">
+                <div class="font-semibold text-sm mb-2">Layers</div>
+                <label class="flex items-center gap-2 text-sm">
+                  <input id="map-show-customers" type="checkbox" class="w-5 h-5" checked>
+                  Customers (GPS)
+                </label>
+                <label class="flex items-center gap-2 text-sm mt-2">
+                  <input id="map-show-reservoirs" type="checkbox" class="w-5 h-5" checked>
+                  Reservoirs / tanks
+                </label>
+              </div>
+
+              <div class="flex gap-2">
+                <button id="map-fit" class="btn-primary flex-1 py-3 rounded-xl font-semibold">Fit map to points</button>
+                <button id="map-open-route" class="btn-soft px-4 py-3 rounded-xl font-semibold">Open route map</button>
+              </div>
+
+              <div class="flex gap-2">
+                <button id="map-add-cust" class="btn-soft flex-1 py-3 rounded-xl font-semibold">Add customer</button>
+                <button id="map-add-res" class="btn-soft flex-1 py-3 rounded-xl font-semibold">Add reservoir</button>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-50 border text-sm text-gray-700" style="border-color: rgba(6,182,212,.12);">
+                Customers without GPS will be pinned automatically when you save an address (if lookup succeeds).
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-5 xl:col-span-2">
+            <div class="flex items-start justify-between">
+              <div>
+                <h2 class="text-xl font-bold">DMA Map</h2>
+                <p class="text-sm text-gray-600 mt-1">Pins are built from customers and reservoirs in the active DMA.</p>
+              </div>
+              <button id="map-refresh" class="btn-soft px-4 py-2 rounded-xl text-sm font-semibold no-print">Refresh</button>
             </div>
 
             <div class="mt-4">
-              <canvas id="trend-chart" height="120"></canvas>
-            </div>
-          </div>
-
-          <div class="bg-white p-5 rounded-xl shadow-lg">
-            <h3 class="font-semibold">Yearly Summary & Comparison</h3>
-            <p class="text-sm text-gray-500">Totals for selected year and comparison to previous year.</p>
-
-            <div class="mt-3 grid grid-cols-2 gap-4">
-              <div class="p-3 bg-gray-50 rounded">
-                <div class="text-xs text-gray-500">This year — Usage</div>
-                <div id="year-usage" class="text-lg font-semibold">0 CCF</div>
-                <div class="text-xs text-gray-500">Avg/month <span id="year-avg">0</span></div>
-              </div>
-              <div class="p-3 bg-gray-50 rounded">
-                <div class="text-xs text-gray-500">This year — Cost</div>
-                <div id="year-cost" class="text-lg font-semibold">$0.00</div>
-                <div class="text-xs text-gray-500">Change vs prev: <span id="year-change">—</span></div>
+              <div id="map"></div>
+              <div class="text-xs text-gray-500 mt-2">
+                Navigation opens Google Maps directions to the selected asset.
               </div>
             </div>
           </div>
-        </aside>
-      </main>
-      <footer class="mt-6 text-center">
-        <p class="text-sm font-semibold text-blue-700 mb-1">Built by Solomon Ofori Manu</p>
-        <p class="text-xs text-gray-700">All rights reserved</p>
+        </div>
+      </section>
+
+      <!-- DATA TAB -->
+      <section id="tab-data" class="tab-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="card p-5">
+            <h2 class="text-xl font-bold">Export</h2>
+            <p class="text-sm text-gray-600 mt-1">Backup and share via JSON or CSV.</p>
+
+            <div class="mt-4 flex flex-col gap-2">
+              <button id="export-json" class="btn-primary py-3 rounded-xl font-semibold">Export JSON</button>
+              <button id="export-customers-csv" class="btn-soft py-3 rounded-xl font-semibold">Export customers CSV</button>
+              <button id="export-routes-csv" class="btn-soft py-3 rounded-xl font-semibold">Export route submissions CSV</button>
+            </div>
+          </div>
+
+          <div class="card p-5">
+            <h2 class="text-xl font-bold">Import</h2>
+            <p class="text-sm text-gray-600 mt-1">Import a previous JSON export from this app.</p>
+
+            <div class="mt-4 space-y-3">
+              <input id="import-file" type="file" accept=".json" class="w-full p-3 border rounded-xl bg-white">
+              <button id="import-json" class="btn-primary w-full py-3 rounded-xl font-semibold">Import JSON</button>
+
+              <div class="p-3 rounded-xl bg-amber-50 border text-sm text-amber-900" style="border-color: rgba(245,158,11,.25);">
+                Import merges by DMA ID. Existing DMAs will be updated.
+              </div>
+
+              <div id="data-msg" class="text-sm text-gray-700"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-8 text-center text-sm text-gray-600">
+        <div class="font-semibold text-sky-800">Built by Solomon Ofori Manu</div>
+        <div class="text-xs text-gray-500 mt-1">DMA mapping • meter reading • NRW analysis • reservoirs • routing</div>
       </footer>
-      </div>
-      <!-- End Main App Content -->
     </div>
+  </div>
 
-    <script>
-      // Authentication System
-      const AUTH_STORAGE_KEY = 'waterso_auth';
-      const USERS_STORAGE_KEY = 'waterso_users';
-      
-      // Authentication state management
-      class AuthManager {
-        constructor() {
-          this.currentUser = null;
-          this.init();
-        }
+<script>
+/* =========================
+   UTILITIES
+========================= */
+const $ = (id)=>document.getElementById(id);
 
-        init() {
-          // Check if user is already logged in
-          const authData = this.getAuthData();
-          if (authData && authData.token && authData.userId) {
-            const user = this.getUserById(authData.userId);
-            if (user) {
-              this.currentUser = user;
-              this.showMainApp();
-              return;
-            }
-          }
-          this.showAuthModal();
-        }
+const fmtMoney = (v)=>'$' + Number(v || 0).toFixed(2);
+const clamp = (n, a, b)=>Math.max(a, Math.min(b, n));
 
-        getAuthData() {
-          try {
-            const data = localStorage.getItem(AUTH_STORAGE_KEY);
-            return data ? JSON.parse(data) : null;
-          } catch (e) {
-            return null;
-          }
-        }
+function safeJSONParse(s, fallback){
+  try{ return s ? JSON.parse(s) : fallback; } catch(e){ return fallback; }
+}
+function parseNum(v, fallback=0){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+function parseIntSafe(v, fallback=0){
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+function nowISO(){ return new Date().toISOString(); }
 
-        setAuthData(userId, token) {
-          try {
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userId, token, timestamp: Date.now() }));
-          } catch (e) {
-            console.warn('Failed to save auth data');
-          }
-        }
+function toast(title, msg){
+  $('toast-title').textContent = title || 'Done';
+  $('toast-msg').textContent = msg || '';
+  $('toast').style.display = 'block';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>{ $('toast').style.display = 'none'; }, 2400);
+}
+$('toast-close').addEventListener('click', ()=> $('toast').style.display='none');
 
-        clearAuthData() {
-          try {
-            localStorage.removeItem(AUTH_STORAGE_KEY);
-          } catch (e) {
-            console.warn('Failed to clear auth data');
-          }
-        }
+function showError(elId, msg){
+  const el = $(elId);
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+}
 
-        getUsers() {
-          try {
-            const users = localStorage.getItem(USERS_STORAGE_KEY);
-            return users ? JSON.parse(users) : [];
-          } catch (e) {
-            return [];
-          }
-        }
+function escapeHtml(s){
+  return String(s||'')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+function escapeJs(s){
+  return String(s||'').replaceAll('\\','\\\\').replaceAll("'","\\'");
+}
 
-        saveUsers(users) {
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-          } catch (e) {
-            console.warn('Failed to save users');
-          }
-        }
+/* =========================
+   UI (defined BEFORE auth)
+========================= */
+const UI = {
+  showAuth(){
+    $('auth-modal').style.display = 'flex';
+    $('main-app').style.display = 'none';
+    $('workspace-modal').style.display = 'none';
+  },
+  showMain(){
+    $('auth-modal').style.display = 'none';
+    $('main-app').style.display = 'block';
+    $('user-name').textContent = auth.currentUser?.name || 'User';
+    UI.applyWorkspaceToNav();
+  },
+  showWorkspacePicker(){
+    $('workspace-modal').style.display = 'flex';
+  },
+  hideWorkspacePicker(){
+    $('workspace-modal').style.display = 'none';
+  },
+  setWorkspaceLabel(){
+    const ws = auth.currentWorkspace();
+    $('workspace-pill').textContent = (ws === 'field') ? 'Meter Reader' : 'Desk';
+  },
+  applyWorkspaceToNav(){
+    const ws = auth.currentWorkspace();
+    UI.setWorkspaceLabel();
 
-        getUserById(userId) {
-          const users = this.getUsers();
-          return users.find(user => user.id === userId);
-        }
-
-        getUserByEmail(email) {
-          const users = this.getUsers();
-          return users.find(user => user.email.toLowerCase() === email.toLowerCase());
-        }
-
-        generateUserId() {
-          return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        }
-
-        generateToken() {
-          return 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
-        }
-
-        register(name, email, password) {
-          // Validate inputs
-          if (!name || !email || !password) {
-            throw new Error('All fields are required');
-          }
-
-          if (password.length < 6) {
-            throw new Error('Password must be at least 6 characters long');
-          }
-
-          // Check if user already exists
-          if (this.getUserByEmail(email)) {
-            throw new Error('An account with this email already exists');
-          }
-
-          // Create new user
-          const users = this.getUsers();
-          const newUser = {
-            id: this.generateUserId(),
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            password: password, // In a real app, this would be hashed
-            createdAt: new Date().toISOString()
-          };
-
-          users.push(newUser);
-          this.saveUsers(users);
-          
-          return newUser;
-        }
-
-        login(email, password) {
-          const user = this.getUserByEmail(email);
-          if (!user) {
-            throw new Error('Invalid email or password');
-          }
-
-          if (user.password !== password) {
-            throw new Error('Invalid email or password');
-          }
-
-          const token = this.generateToken();
-          this.setAuthData(user.id, token);
-          this.currentUser = user;
-          
-          return user;
-        }
-
-        logout() {
-          this.currentUser = null;
-          this.clearAuthData();
-          this.showAuthModal();
-        }
-
-        showAuthModal() {
-          document.getElementById('auth-modal').style.display = 'flex';
-          document.getElementById('main-app').style.display = 'none';
-        }
-
-        showMainApp() {
-          document.getElementById('auth-modal').style.display = 'none';
-          document.getElementById('main-app').style.display = 'block';
-          if (this.currentUser) {
-            document.getElementById('user-name').textContent = this.currentUser.name;
-          }
-        }
-
-        getCurrentUserId() {
-          return this.currentUser ? this.currentUser.id : null;
-        }
-      }
-
-      // Initialize auth manager
-      const authManager = new AuthManager();
-
-      // Original app constants and variables
-      const STORAGE_KEY = 'waterso_state_v1';
-      const LEGACY_KEY = 'watersom_state_v1';
-      const $ = id => document.getElementById(id);
-      const toMoney = v => '$' + Number(v || 0).toFixed(2);
-
-      // elements
-      const addressEl = $('cust-address');
-      const meterEl = $('meter-number');
-      const lastReadEl = $('last-read');
-      const currentReadEl = $('current-read');
-      const lastReadDateEl = $('last-read-date');
-      const currentReadDateEl = $('current-read-date');
-      const ccfUsedEl = $('ccf-used');
-      const gallonsEl = $('gallons-used');
-      const waterBaseEl = $('water-base');
-      const waterRateEl = $('water-rate');
-      const sewerEnabledEl = $('sewer-enabled');
-      const sewerBaseEl = $('sewer-base');
-      const sewerRateEl = $('sewer-rate');
-      const sewerFields = $('sewer-fields');
-      const billingMonthEl = $('billing-month');
-      const calcBtn = $('calc-btn');
-      const saveBtn = $('save-month');
-  const tiersContainer = $('tiers-container');
-  const waterModeFlat = $('water-mode-flat');
-  const waterModeTiered = $('water-mode-tiered');
-  const waterRateContainer = $('water-rate-container');
-  const utilityTaxEl = $('utility-tax');
-  const recordsBody = $('records-body');
-  const printBtn = $('print-btn');
-
-      const resultCcf = $('result-ccf');
-      const resultGal = $('result-gal');
-      const resultWater = $('result-water');
-      const resultSewer = $('result-sewer');
-      const resultTotal = $('result-total');
-
-      const yearSelect = $('year-select');
-      const yearUsageEl = $('year-usage');
-      const yearAvgEl = $('year-avg');
-      const yearCostEl = $('year-cost');
-      const yearChangeEl = $('year-change');
-
-      let trendChart = null;
-
-      function migrateStorage(){ try{ const newVal = localStorage.getItem(STORAGE_KEY); const oldVal = localStorage.getItem(LEGACY_KEY); if(!newVal && oldVal) localStorage.setItem(STORAGE_KEY, oldVal); }catch(e){console.warn(e);} }
-      
-      function getUserStorageKey() {
-        const userId = authManager.getCurrentUserId();
-        return userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
-      }
-      
-      function loadState(){ 
-        migrateStorage(); 
-        try{ 
-          const storageKey = getUserStorageKey();
-          const raw = localStorage.getItem(storageKey); 
-          return raw ? JSON.parse(raw) : { records: [] }; 
-        }catch(e){ 
-          return { records: [] }; 
-        } 
-      }
-      
-      function saveState(s){ 
-        try{ 
-          const storageKey = getUserStorageKey();
-          localStorage.setItem(storageKey, JSON.stringify(s)); 
-        }catch(e){ 
-          console.warn(e); 
-        } 
-      }
-
-      // helper: read tier rows from DOM into sorted array of {limit, rate}
-      function readTiersFromDOM(){
-        const list = [];
-        const rows = document.querySelectorAll('#tiers-list > .tier-row');
-        rows.forEach((r,idx)=>{
-          const limitEl = r.querySelector('.tier-limit');
-          const rateEl = r.querySelector('.tier-rate');
-          const limit = Number(limitEl.value) || 0;
-          const rate = Number(rateEl.value) || 0;
-          list.push({ limit, rate });
-        });
-        // ensure sorted by limit ascending
-        list.sort((a,b)=>a.limit - b.limit);
-        return list;
-      }
-
-      function calcTieredCharge(ccf){
-        // Flat mode: simple per-CCF rate
-        if(waterModeFlat && waterModeFlat.checked) return ccf * (parseFloat(waterRateEl.value) || 0);
-
-        // Tiered mode: compute across dynamic tiers
-        const tiers = readTiersFromDOM();
-        if(!tiers.length) return 0;
-        let prev = 0, charge = 0;
-        for(let i=0;i<tiers.length;i++){
-          const upper = tiers[i].limit || 0;
-          const rate = tiers[i].rate || 0;
-          const tierUsage = Math.max(0, Math.min(ccf, upper) - prev);
-          if(tierUsage > 0) charge += tierUsage * rate;
-          prev = upper;
-        }
-        // if consumption beyond highest limit, charge at last tier's rate
-        const lastRate = tiers[tiers.length-1].rate || 0;
-        if(ccf > prev) charge += (ccf - prev) * lastRate;
-        return charge;
-      }
-
-      // Validation helpers
-      function showError(id, msg){ const el = document.getElementById(id); if(!el) return; if(msg){ el.style.display='block'; el.textContent = msg; } else { el.style.display='none'; el.textContent=''; } }
-
-      function validateReads(){
-        const last = parseFloat(lastReadEl.value) || 0;
-        const curr = parseFloat(currentReadEl.value) || 0;
-        if(curr < last){ showError('read-error','Current read must be equal or greater than Last read'); return false; }
-        showError('read-error','');
-        return true;
-      }
-
-      function validateBillingMonth(){
-        const m = billingMonthEl.value || '';
-        if(!m){ showError('billing-month-error','Please select a billing month'); return false; }
-        showError('billing-month-error','');
-        return true;
-      }
-
-      function validateTiers(){
-        const tiers = readTiersFromDOM();
-        if(!tiers.length) return true; // nothing to validate
-        // ensure strictly increasing limits and non-negative rates
-        for(let i=0;i<tiers.length;i++){
-          const t = tiers[i];
-          if(t.limit < 0) { alert('Tier limits must be non-negative'); return false; }
-          if(t.rate < 0) { alert('Tier rates must be non-negative'); return false; }
-          if(i>0 && tiers[i].limit <= tiers[i-1].limit){ alert('Tier limits must be increasing (each tier limit greater than previous)'); return false; }
-        }
-        return true;
-      }
-
-      function validateAll(){
-        const ok1 = validateReads();
-        const ok2 = validateBillingMonth();
-        const ok3 = validateTiers();
-        return ok1 && ok2 && ok3;
-      }
-
-      // returns array of { limit, rate, usage, cost, label }
-      function computeTierBreakdown(ccf){
-        const out = [];
-        if(waterModeFlat && waterModeFlat.checked){
-          const rate = parseFloat(waterRateEl.value) || 0;
-          const cost = ccf * rate;
-          out.push({ label:'Flat rate', limit: null, rate, usage: ccf, cost });
-          return out;
-        }
-        const tiers = readTiersFromDOM();
-        if(!tiers.length) return out;
-        let prev = 0;
-        for(let i=0;i<tiers.length;i++){
-          const upper = Number(tiers[i].limit) || 0;
-          const rate = Number(tiers[i].rate) || 0;
-          const usage = Math.max(0, Math.min(ccf, upper) - prev);
-          const cost = usage * rate;
-          out.push({ label: `Tier ${i+1}`, limit: upper, rate, usage, cost });
-          prev = upper;
-        }
-        // beyond last
-        if(ccf > prev){ const lastRate = Number(tiers[tiers.length-1].rate) || 0; const usage = ccf - prev; out.push({ label: `Above ${prev}`, limit: null, rate: lastRate, usage, cost: usage * lastRate }); }
-        return out;
-      }
-
-      function autoCalculateReads(){ const last = parseFloat(lastReadEl.value) || 0; const curr = parseFloat(currentReadEl.value) || 0; const ccf = Math.max(0, curr - last); const gallons = Math.round(ccf * 748); ccfUsedEl.textContent = ccf.toFixed(2) + ' CCF'; gallonsEl.textContent = gallons.toLocaleString() + ' gal'; resultCcf.textContent = ccf.toFixed(2); resultGal.textContent = gallons.toLocaleString(); return { ccf, gallons }; }
-
-      function calculateCharges(){
-        // basic validations before calculating (reads and tiers)
-        if(!validateReads()) return { ccf:0, gallons:0, waterCharge:0, sewerCharge:0, taxAmount:0, total:0 };
-        if(!validateTiers()) return { ccf:0, gallons:0, waterCharge:0, sewerCharge:0, taxAmount:0, total:0 };
-        const { ccf, gallons } = autoCalculateReads();
-  const breakdown = computeTierBreakdown(ccf);
-  const waterChargeUsage = breakdown.reduce((s,b)=> s + (Number(b.cost)||0), 0);
-  const waterBase = parseFloat(waterBaseEl.value) || 0;
-  const waterChargeBeforeTax = waterBase + waterChargeUsage;
-        let sewerChargeBeforeTax = 0;
-        const sewerBase = parseFloat(sewerBaseEl?.value || 0) || 0;
-        if(sewerEnabledEl.checked){ sewerChargeBeforeTax = sewerBase + (ccf * (parseFloat(sewerRateEl.value) || 0)); }
-
-  // Utility tax applies only to water charges (not to sewer)
-  const taxRate = (parseFloat(utilityTaxEl.value) || 0) / 100;
-  const taxAmount = waterChargeBeforeTax * taxRate;
-  const total = waterChargeBeforeTax + sewerChargeBeforeTax + taxAmount;
-
-        resultWater.textContent = toMoney(waterChargeBeforeTax);
-        resultSewer.textContent = toMoney(sewerChargeBeforeTax);
-        // show tax and total
-        const existingTax = document.getElementById('result-tax');
-        if(!existingTax){
-          const taxDiv = document.createElement('div');
-          taxDiv.className = 'mt-2 text-sm text-gray-600';
-          taxDiv.id = 'result-tax';
-          taxDiv.innerHTML = `<div>Utility Tax: <strong>${toMoney(taxAmount)}</strong> (${(taxRate*100).toFixed(2)}%)</div>`;
-          resultTotal.parentElement.appendChild(taxDiv);
-        } else {
-          existingTax.innerHTML = `<div>Utility Tax: <strong>${toMoney(taxAmount)}</strong> (${(taxRate*100).toFixed(2)}%)</div>`;
-        }
-
-        resultTotal.textContent = toMoney(total);
-        resultCcf.textContent = ccf.toFixed(2);
-        resultGal.textContent = gallons.toLocaleString();
-        return { ccf, gallons, breakdown, waterCharge: waterChargeBeforeTax, sewerCharge: sewerChargeBeforeTax, taxAmount, total, waterBase, sewerBase, taxRate, mode: (waterModeTiered && waterModeTiered.checked) ? 'tiered' : 'flat' };
-      }
-
-  function renderRecords(){
-    const state = loadState();
-    const recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
-    recordsBody.innerHTML='';
-    recs.forEach((r,idx)=>{
-      const tr = document.createElement('tr'); tr.className='border-b';
-      const tiersMeta = r.tiers && r.tiers.length ? ` &middot; Tiers:${r.tiers.length}` : '';
-      const meta = `<div class="text-xs text-gray-500">${r.mode || 'flat'} ${tiersMeta} ${r.taxAmount? '&middot; Tax:'+ (Number(r.taxAmount)||0).toFixed(2): ''}</div>`;
-      tr.innerHTML = `<td class="p-2">${r.month}${meta}</td><td class="p-2 text-right">${Number(r.ccf).toFixed(2)}</td><td class="p-2 text-right">${Number(r.gallons).toLocaleString()}</td><td class="p-2 text-right">${toMoney(r.total)}</td><td class="p-2 text-center"><button data-idx="${idx}" class="delete-row text-red-500 text-sm">Delete</button> <button data-month="${r.month}" class="load-row text-blue-600 text-sm ml-2">Load</button></td>`;
-      recordsBody.appendChild(tr);
+    // show/hide tabs by scope
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      const scope = b.dataset.scope || 'desk';
+      const show = (ws === 'desk' && scope === 'desk') || (ws === 'field' && scope === 'field');
+      b.style.display = show ? '' : 'none';
     });
 
-    // delete handlers
-    Array.from(document.getElementsByClassName('delete-row')).forEach(btn=> btn.addEventListener('click', e=>{ const i = Number(e.target.dataset.idx); const s = loadState(); s.records.splice(i,1); saveState(s); renderRecords(); updateChart(); updateYearSelect(); }));
-
-    // load handlers
-    Array.from(document.getElementsByClassName('load-row')).forEach(btn=> btn.addEventListener('click', e=>{ const m = e.target.dataset.month; if(m) loadRecordByMonth(m); }));
-
-    updateChart(); updateYearSelect();
-  }
-
-  // load a saved record into the form for editing (rebuilds tier rows)
-  function loadRecordByMonth(month){
+    // ensure active tab is allowed
     const state = loadState();
-    const rec = (state.records||[]).find(r=>r.month===month);
-    if(!rec) return;
-    billingMonthEl.value = rec.month || '';
-    const last = (rec.lastRead != null) ? rec.lastRead : 0;
-    lastReadEl.value = last;
-    const curr = (rec.currentRead != null) ? rec.currentRead : (Number(rec.ccf || 0) + Number(last));
-    currentReadEl.value = curr;
-    lastReadDateEl.value = rec.lastReadDate || '';
-    currentReadDateEl.value = rec.currentReadDate || '';
-    addressEl.value = rec.address || state.address || '';
-    meterEl.value = rec.meter || state.meter || '';
-    waterBaseEl.value = (rec.waterBase != null) ? rec.waterBase : waterBaseEl.value;
-    sewerBaseEl.value = (rec.sewerBase != null) ? rec.sewerBase : sewerBaseEl.value;
-    waterRateEl.value = (rec.waterRate != null) ? rec.waterRate : waterRateEl.value;
-    sewerRateEl.value = (rec.sewerRate != null) ? rec.sewerRate : sewerRateEl.value;
-    utilityTaxEl.value = (rec.utilityTax != null) ? rec.utilityTax : (rec.taxRate != null ? (Number(rec.taxRate||0)*100).toFixed(2) : utilityTaxEl.value);
-    // set sewer enabled
-    const hasSewer = (rec.sewerBase && Number(rec.sewerBase)>0) || (rec.sewerRate && Number(rec.sewerRate)>0) || Boolean(rec.sewerCharge);
-    sewerEnabledEl.checked = !!hasSewer;
-    if(sewerEnabledEl.checked) sewerFields.classList.remove('hidden'); else sewerFields.classList.add('hidden');
-    // rebuild tiers
-    if(rec.mode === 'tiered'){
-      if(waterModeTiered) waterModeTiered.checked = true;
-      if(waterModeFlat) waterModeFlat.checked = false;
-      tiersList.innerHTML = '';
-      if(rec.tiers && rec.tiers.length){ rec.tiers.forEach(t=> tiersList.appendChild(createTierRow(t.limit, t.rate))); }
-      else { resetDefaultTiers(); }
-    } else {
-      if(waterModeFlat) waterModeFlat.checked = true;
-      if(waterModeTiered) waterModeTiered.checked = false;
-      tiersList.innerHTML = '';
-    }
-    refreshTierLabels(); refreshTierVisibility(); calculateCharges(); updateChart();
+    const desired = (state.ui && state.ui.activeTab) ? state.ui.activeTab : (ws === 'field' ? 'tab-field' : 'tab-dashboard');
+
+    const allowed = (ws === 'field') ? new Set(['tab-field','tab-map']) : new Set(['tab-dashboard','tab-desk','tab-map','tab-data']);
+    const nextTab = allowed.has(desired) ? desired : (ws === 'field' ? 'tab-field' : 'tab-dashboard');
+    setActiveTab(nextTab);
+  }
+};
+
+/* =========================
+   STORAGE + AUTH
+========================= */
+const AUTH_STORAGE_KEY = 'ofori_fd_auth';
+const USERS_STORAGE_KEY = 'ofori_fd_users';
+const APP_STORAGE_KEY = 'ofori_fd_state_v2';
+
+class AuthManager{
+  constructor(){ this.currentUser = null; }
+
+  getAuth(){ return safeJSONParse(localStorage.getItem(AUTH_STORAGE_KEY), null); }
+  setAuth(userId, token){
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userId, token, ts: Date.now() }));
+  }
+  clearAuth(){ localStorage.removeItem(AUTH_STORAGE_KEY); }
+
+  getUsers(){ return safeJSONParse(localStorage.getItem(USERS_STORAGE_KEY), []); }
+  saveUsers(users){ localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users)); }
+
+  getUserById(id){ return this.getUsers().find(u=>u.id===id); }
+  getUserByEmail(email){ return this.getUsers().find(u=>u.email === (email||'').toLowerCase().trim()); }
+
+  genId(){ return 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2,10); }
+  genToken(){ return 'tok_' + Date.now() + '_' + Math.random().toString(36).slice(2,14); }
+
+  register(name,email,pw){
+    if(!name || !email || !pw) throw new Error('All fields are required');
+    if(pw.length < 6) throw new Error('Password must be at least 6 characters');
+    if(this.getUserByEmail(email)) throw new Error('Email already exists');
+    const users = this.getUsers();
+    const u = {
+      id: this.genId(),
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password: pw,
+      workspace: 'desk',
+      createdAt: nowISO()
+    };
+    users.push(u);
+    this.saveUsers(users);
+    return u;
   }
 
-  function saveMonth(){ const m = billingMonthEl.value || new Date().toISOString().slice(0,7); const res = calculateCharges(); const state = loadState(); state.address = addressEl.value; state.meter = meterEl.value; state.records = state.records || []; const existing = state.records.find(r=>r.month===m);
-    // capture current tiers
-    const tiers = readTiersFromDOM();
-    const rec = { month: m, year: m.slice(0,4), ccf: res.ccf, gallons: res.gallons, waterBase: res.waterBase || 0, waterRate: parseFloat(waterRateEl.value) || 0, tiers: tiers, sewerBase: res.sewerBase || 0, sewerRate: parseFloat(sewerRateEl.value) || 0, waterCharge: res.waterCharge, sewerCharge: res.sewerCharge, taxAmount: res.taxAmount || 0, taxRate: res.taxRate || 0, utilityTax: parseFloat(utilityTaxEl.value) || 0, mode: res.mode || 'flat', total: res.total, lastReadDate: lastReadDateEl.value || null, currentReadDate: currentReadDateEl.value || null };
-    if(existing) Object.assign(existing, rec); else state.records.push(rec); saveState(state); renderRecords(); alert('Saved ' + m); }
+  login(email,pw){
+    const u = this.getUserByEmail(email);
+    if(!u || u.password !== pw) throw new Error('Invalid email or password');
+    this.setAuth(u.id, this.genToken());
+    this.currentUser = u;
+    return u;
+  }
 
+  persistUser(){
+    if(!this.currentUser) return;
+    const users = this.getUsers();
+    const idx = users.findIndex(x=>x.id===this.currentUser.id);
+    if(idx>=0){ users[idx] = this.currentUser; this.saveUsers(users); }
+  }
 
-      function getAvailableYears(){ const s = loadState(); const years = new Set(); (s.records||[]).forEach(r=>{ if(r.month && r.month.length>=4) years.add(r.month.slice(0,4)); }); return Array.from(years).sort(); }
+  currentWorkspace(){
+    return (this.currentUser && this.currentUser.workspace) ? this.currentUser.workspace : 'desk';
+  }
+  setWorkspace(ws){
+    if(!this.currentUser) return;
+    this.currentUser.workspace = (ws === 'field') ? 'field' : 'desk';
+    this.persistUser();
+    UI.applyWorkspaceToNav();
+    toast('Workspace updated', this.currentWorkspace()==='field' ? 'Meter Reader view' : 'Desk view');
+  }
 
-      function updateYearSelect(){ const years = getAvailableYears(); yearSelect.innerHTML = ''; const allOpt = document.createElement('option'); allOpt.value='all'; allOpt.textContent='All'; yearSelect.appendChild(allOpt); years.forEach(y=>{ const o = document.createElement('option'); o.value=y; o.textContent=y; yearSelect.appendChild(o); }); yearSelect.value = years.includes(new Date().getFullYear().toString()) ? new Date().getFullYear().toString() : 'all'; updateYearSummary(); }
+  logout(){
+    this.currentUser = null;
+    this.clearAuth();
+    UI.showAuth();
+  }
 
-      function aggregateYear(year){ const s = loadState(); const recs = (s.records||[]).filter(r=> year==='all' ? true : (r.year===year)); const totalCcf = recs.reduce((a,b)=>a+Number(b.ccf||0),0); const totalCost = recs.reduce((a,b)=>a+Number(b.total||0),0); return { totalCcf, totalCost, months: recs.length, recs }; }
-
-      function updateYearSummary(){ const year = yearSelect.value || 'all'; if(year==='all'){ yearUsageEl.textContent = '—'; yearCostEl.textContent = '—'; yearAvgEl.textContent = '—'; yearChangeEl.textContent = '—'; return; } const thisYear = aggregateYear(year); const prev = aggregateYear((Number(year)-1).toString()); yearUsageEl.textContent = `${thisYear.totalCcf.toFixed(2)} CCF`; yearAvgEl.textContent = thisYear.months ? (thisYear.totalCcf/thisYear.months).toFixed(2) : '0'; yearCostEl.textContent = toMoney(thisYear.totalCost); if(prev.months){ const pct = prev.totalCost ? ((thisYear.totalCost - prev.totalCost)/prev.totalCost)*100 : 100; yearChangeEl.textContent = `${pct>=0?'+':''}${pct.toFixed(1)}%`; } else yearChangeEl.textContent = '—'; updateChart(); }
-
-      function updateChart(){
-        const state = loadState();
-        const selectedYear = (yearSelect && yearSelect.value) ? yearSelect.value : 'all';
-
-        // If a specific year is selected, build Jan..Dec arrays (monthly KPI view)
-        if(selectedYear && selectedYear !== 'all'){
-          const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-          const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          const gallonsData = new Array(12).fill(0);
-          const waterCostData = new Array(12).fill(0);
-          const totalCostData = new Array(12).fill(0);
-          const recs = (state.records||[]).filter(r=> r.month && r.month.slice(0,4) === selectedYear);
-          recs.forEach(r=>{
-            const m = r.month.slice(5,7);
-            const idx = months.indexOf(m);
-            if(idx>=0){ gallonsData[idx] += Number(r.gallons||0); totalCostData[idx] += Number(r.total||0); waterCostData[idx] += Number(r.waterCharge||0); }
-          });
-
-          const ctx = $('trend-chart').getContext('2d');
-          if(trendChart){ try{ trendChart.destroy(); }catch(e){} }
-          const cfg = {
-            data: {
-              labels,
-              datasets: [
-                { type: 'bar', label: 'Total $', data: totalCostData, backgroundColor: 'rgba(16,185,129,0.9)', yAxisID: 'y2' },
-                { type: 'bar', label: 'Water $', data: waterCostData, backgroundColor: 'rgba(59,130,246,0.85)', yAxisID: 'y2' },
-                { type: 'line', label: 'Gallons', data: gallonsData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', yAxisID: 'y1', tension: 0.2, fill: false }
-              ]
-            },
-            options: {
-              responsive: true,
-              interaction: { mode: 'index', intersect: false },
-              stacked: false,
-              scales: {
-                y1: { type: 'linear', position: 'left', title: { display: true, text: 'Gallons' } },
-                y2: { type: 'linear', position: 'right', title: { display: true, text: 'Dollars' }, grid: { drawOnChartArea: false } }
-              },
-              plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                  callbacks: {
-                    label: function(ctx){ const v = ctx.raw; if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2); return ctx.dataset.label + ': ' + Number(v).toLocaleString(); }
-                  }
-                }
-              }
-            }
-          };
-          trendChart = new Chart(ctx, cfg);
-          return;
-        }
-
-        // default: show a timeline of saved records (month labels)
-        let recs = (state.records||[]).slice().sort((a,b)=> (a.month||'').localeCompare(b.month||''));
-        if(!recs.length){ const curMonth = billingMonthEl.value || new Date().toISOString().slice(0,7); const cur = calculateCharges(); recs = [{ month: curMonth, gallons: cur.gallons, total: cur.total }]; }
-        const labels = recs.map(r=>r.month);
-        const gallonsData = recs.map(r=>Number(r.gallons||0));
-        const costData = recs.map(r=>Number(r.total||0));
-        const ctx = $('trend-chart').getContext('2d');
-        if(trendChart){ try{ trendChart.destroy(); }catch(e){} }
-
-        const cfg = {
-          data: {
-            labels,
-            datasets: [
-              { type: 'bar', label: 'Total $', data: costData, backgroundColor: 'rgba(16,185,129,0.9)', yAxisID: 'y2' },
-              { type: 'line', label: 'Gallons', data: gallonsData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', yAxisID: 'y1', tension: 0.2, fill: false }
-            ]
-          },
-          options: {
-            responsive: true,
-            interaction: { mode: 'index', intersect: false },
-            stacked: false,
-            scales: {
-              y1: { type: 'linear', position: 'left', title: { display: true, text: 'Gallons' } },
-              y2: { type: 'linear', position: 'right', title: { display: true, text: 'Dollars' }, grid: { drawOnChartArea: false } }
-            },
-            plugins: {
-              legend: { position: 'bottom' },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx){ const v = ctx.raw; if(ctx.dataset.type === 'bar') return ctx.dataset.label + ': $' + Number(v).toFixed(2); return ctx.dataset.label + ': ' + Number(v).toLocaleString(); }
-                }
-              }
-            }
-          }
-        };
-        trendChart = new Chart(ctx, cfg);
+  init(){
+    const auth = this.getAuth();
+    if(auth && auth.userId){
+      const u = this.getUserById(auth.userId);
+      if(u){
+        this.currentUser = u;
+        UI.showMain();
+        return true;
       }
+    }
+    UI.showAuth();
+    return false;
+  }
 
+  userKey(){ return this.currentUser ? `${APP_STORAGE_KEY}_${this.currentUser.id}` : APP_STORAGE_KEY; }
+}
+const auth = new AuthManager();
 
-      // inline print report - populate hidden #print-report and call window.print()
-      function printReport(){
-        const calc = calculateCharges();
-        const container = document.getElementById('print-report');
-        if(!container) return window.print();
-        const selMonth = billingMonthEl.value || new Date().toISOString().slice(0,7);
-        // prefer selected year for yearly summary; fallback to record year or current year
-        const selectedYear = (yearSelect && yearSelect.value && yearSelect.value !== 'all') ? yearSelect.value : new Date().getFullYear().toString();
-        const thisYear = aggregateYear(selectedYear);
-        const prevYear = aggregateYear((Number(selectedYear)-1).toString());
-        const pctChange = (prevYear.totalCost && prevYear.totalCost>0) ? ((thisYear.totalCost - prevYear.totalCost)/prevYear.totalCost)*100 : null;
+/* =========================
+   STATE
+========================= */
+function loadState(){
+  const key = auth.userKey();
+  const s = safeJSONParse(localStorage.getItem(key), null);
+  if(s) return s;
+  return {
+    activeDmaId: null,
+    dmas: [],
+    routeSubmissions: [],
+    _fieldDraft: {},
+    ui: { activeTab: 'tab-dashboard' }
+  };
+}
+function saveState(state){
+  localStorage.setItem(auth.userKey(), JSON.stringify(state));
+}
 
-        // build HTML with structured tables and a numeric monthly summary (no page snapshot image)
-        let monthTable = '';
-        try{
-          const s = loadState();
-          const monthsLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          const monthsKeys = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-          const gallonsByMonth = new Array(12).fill(0);
-          const totalByMonth = new Array(12).fill(0);
-          const waterByMonth = new Array(12).fill(0);
-          (s.records||[]).forEach(r=>{ if(r.month && r.month.slice(0,4)===selectedYear){ const m = r.month.slice(5,7); const idx = monthsKeys.indexOf(m); if(idx>=0){ gallonsByMonth[idx] += Number(r.gallons||0); totalByMonth[idx] += Number(r.total||0); waterByMonth[idx] += Number(r.waterCharge||0); } } });
-          // build table rows only for months that have data or show full 12 rows (zeros allowed)
-          monthTable = `<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">Monthly Summary (${selectedYear})</div><table style="width:100%;border-collapse:collapse;font-size:12px"><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Gallons</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Water $</th><th style="text-align:right;padding:6px;border-bottom:1px solid #eee">Total $</th></tr>`;
-          for(let i=0;i<12;i++){ monthTable += `<tr><td style="padding:6px;border-bottom:1px solid #f3f3f3">${monthsLabels[i]}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${Number(gallonsByMonth[i]).toLocaleString()}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${toMoney(waterByMonth[i])}</td><td style="padding:6px;border-bottom:1px solid #f3f3f3;text-align:right">${toMoney(totalByMonth[i])}</td></tr>`; }
-          monthTable += '</table></div>';
-        }catch(e){ monthTable = ''; }
+/* =========================
+   DMA MODEL / DEFAULTS
+========================= */
+function newDma(){
+  return {
+    id: 'dma_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    name: 'New DMA',
+    sizeSqMi: 0,
+    connections: 0,
+    pumpageMgd: 0,
+    periodDays: 30,
+    boundaryGalOverride: 0,
+    pressurePsi: 0,
+    tankCount: 0,
+    tankVolGal: 0,
+    costPerKgal: 3.50,
+    billingUnit: 'CCF',
+    unbilledAuthorizedGal: 0,
+    apparentLossPct: null,
+    customers: [],
+    reservoirs: []
+  };
+}
 
-  document.title = `OFORI-Water Bill_${selMonth}`;
-        // build the report HTML in a variable. Do NOT inject into the page yet —
-        // popup flow will use this string directly. Only use container when
-        // falling back to inline printing.
-        const reportHtml = `
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div>
-              <h2 style="margin:0;font-size:18px">OFORI - Water Bill</h2>
-              <div style="font-size:11px;color:#555">${addressEl.value||''}${meterEl.value? ' • Meter: '+meterEl.value:''}</div>
+function ensureActiveDma(state){
+  if(state.dmas.length === 0){
+    const d = newDma();
+    d.name = 'DMA-1';
+    state.dmas.push(d);
+    state.activeDmaId = d.id;
+    saveState(state);
+  }
+  if(!state.activeDmaId || !state.dmas.find(d=>d.id===state.activeDmaId)){
+    state.activeDmaId = state.dmas[0].id;
+    saveState(state);
+  }
+  return state.dmas.find(d=>d.id===state.activeDmaId);
+}
+
+/* =========================
+   TABS
+========================= */
+function setActiveTab(tabId){
+  const state = loadState();
+  state.ui.activeTab = tabId;
+  saveState(state);
+
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  $(tabId).classList.remove('hidden');
+
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const isActive = b.dataset.tab === tabId;
+    b.classList.toggle('btn-primary', isActive);
+    b.classList.toggle('btn-soft', !isActive);
+  });
+
+  if(tabId === 'tab-map') setTimeout(()=>MapUI.ensureInitAndRefresh(), 50);
+}
+
+function initTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setActiveTab(btn.dataset.tab));
+  });
+  $('go-field').addEventListener('click', ()=> setActiveTab('tab-field'));
+  $('go-desk').addEventListener('click', ()=> setActiveTab('tab-desk'));
+}
+
+/* =========================
+   VOLUME HELPERS
+========================= */
+function ccfToGallons(ccf){ return Math.round((parseNum(ccf) || 0) * 748); }
+function gallonsToCcf(gal){ return (parseNum(gal) || 0) / 748; }
+
+/* =========================
+   ADDRESS PARSE + GEOCODE
+========================= */
+function parseAddress(raw){
+  const out = { address:'', city:'', state:'', zip:'' };
+  if(!raw) return out;
+  const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
+  if(parts.length >= 1) out.address = parts[0];
+  if(parts.length >= 2) out.city = parts[1];
+  if(parts.length >= 3){
+    const stZip = parts[2].split(/\s+/).filter(Boolean);
+    out.state = stZip[0] || '';
+    out.zip = stZip.slice(1).join(' ') || '';
+  }
+  return out;
+}
+function formatAddress(cust){
+  if(cust.addressRaw) return cust.addressRaw;
+  const parts = [];
+  if(cust.address) parts.push(cust.address);
+  const cityStateZip = [cust.city, cust.state, cust.zip].filter(Boolean).join(' ');
+  if(cityStateZip) parts.push(cityStateZip);
+  return parts.join(', ') || '—';
+}
+
+let __geoCache = new Map();
+async function nominatimSearch(query){
+  const q = (query||'').trim();
+  if(q.length < 4) return [];
+  const cacheKey = 's:' + q.toLowerCase();
+  if(__geoCache.has(cacheKey)) return __geoCache.get(cacheKey);
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url, { method:'GET' });
+  if(!res.ok) return [];
+  const json = await res.json();
+  const items = (json||[]).map(x=>({
+    display: x.display_name,
+    lat: parseNum(x.lat, null),
+    lon: parseNum(x.lon, null)
+  })).filter(x=>x.lat!=null && x.lon!=null && x.display);
+
+  __geoCache.set(cacheKey, items);
+  return items;
+}
+
+async function geocodeAddress(address){
+  const a = (address||'').trim();
+  if(!a) return null;
+  const cacheKey = 'g:' + a.toLowerCase();
+  if(__geoCache.has(cacheKey)) return __geoCache.get(cacheKey);
+
+  const items = await nominatimSearch(a);
+  const best = items[0] || null;
+  __geoCache.set(cacheKey, best);
+  return best;
+}
+
+/* =========================
+   NAVIGATION + ROUTE BUILD
+========================= */
+function openNavigation(lat, lon, addressString){
+  const hasCoords = (lat != null && lon != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)));
+  const dest = hasCoords ? `${lat},${lon}` : encodeURIComponent(addressString || '');
+  const url = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+  window.open(url, '_blank');
+}
+window.__navTo = (lat, lon, label)=> openNavigation(lat, lon, label);
+
+function openRouteInGoogleMaps(points){
+  // points: [{lat,lon,address,label}]
+  if(!points || points.length < 1){
+    toast('No route points', 'Add customers with addresses or GPS.');
+    return;
+  }
+
+  // Use coordinates when available; else address
+  const toDest = (p)=>{
+    const has = p.lat!=null && p.lon!=null && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon));
+    return has ? `${p.lat},${p.lon}` : (p.address || p.label || '');
+  };
+
+  const origin = toDest(points[0]);
+  const destination = toDest(points[points.length - 1]);
+  const waypoints = points.slice(1, -1).map(toDest).filter(Boolean);
+
+  // Google Maps URL supports waypoints (practical limit varies; keep small)
+  const wp = waypoints.slice(0, 18).map(encodeURIComponent).join('|'); // keep conservative
+  const url =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${encodeURIComponent(origin)}` +
+    `&destination=${encodeURIComponent(destination)}` +
+    (wp ? `&waypoints=${wp}` : '');
+
+  window.open(url, '_blank');
+}
+
+/* =========================
+   FIELD WORKFLOW
+========================= */
+const FieldUI = {
+  routeStops: [],
+  idx: 0,
+  flagged: new Set(),
+
+  init(){
+    $('field-start').addEventListener('click', ()=>this.startRoute());
+    $('field-prev').addEventListener('click', ()=>this.prev());
+    $('field-next').addEventListener('click', ()=>this.next());
+    $('field-save-reading').addEventListener('click', ()=>this.saveStop());
+    $('field-skip').addEventListener('click', ()=>this.next(true));
+    $('field-nav').addEventListener('click', ()=>this.navigateCurrent());
+    $('field-mark-flag').addEventListener('click', ()=>this.toggleFlag());
+    $('field-submit-route').addEventListener('click', ()=>this.submitRoute());
+
+    $('field-add-customer').addEventListener('click', ()=>ModalUI.openCustomer());
+    $('field-open-route').addEventListener('click', ()=>this.openRouteMap());
+
+    $('field-last').addEventListener('input', ()=>this.updateUsagePreview());
+    $('field-current').addEventListener('input', ()=>this.updateUsagePreview());
+    $('field-unit').addEventListener('change', ()=>this.updateUsagePreview());
+
+    $('field-exc-list').addEventListener('click', ()=>this.showExceptionsAlert());
+  },
+
+  startRoute(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    if(!dma.customers.length){
+      toast('No customers', 'Add customers in Desk first.');
+      setActiveTab('tab-desk');
+      return;
+    }
+
+    // Stable list of stops for this route
+    this.routeStops = dma.customers.slice().map(c=>({ ...c }));
+    this.idx = 0;
+    this.flagged = new Set();
+
+    if(!$('field-month').value){
+      $('field-month').value = new Date().toISOString().slice(0,7);
+    }
+    if(!($('field-route').value||'').trim()){
+      $('field-route').value = 'Route';
+    }
+
+    this.loadStop();
+    this.updateRouteKpis();
+    DashboardUI.refresh();
+    toast('Route started', 'Ready for readings.');
+  },
+
+  openRouteMap(){
+    // Build route from current routeStops (if started), else from DMA customers
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const stops = (this.routeStops && this.routeStops.length) ? this.routeStops : (dma.customers||[]);
+    const points = (stops||[]).map(c=>({
+      lat: c.lat, lon: c.lon, address: formatAddress(c), label: c.name || c.acct || 'Customer'
+    })).filter(p=> (p.address && p.address !== '—') || (p.lat!=null && p.lon!=null));
+    openRouteInGoogleMaps(points);
+  },
+
+  currentStop(){ return this.routeStops[this.idx] || null; },
+
+  loadStop(){
+    const stop = this.currentStop();
+    $('field-stop-total').textContent = String(this.routeStops.length);
+    $('field-stop-idx').textContent = String(this.routeStops.length ? (this.idx+1) : 0);
+
+    if(!stop){
+      $('field-cust-name').textContent = '—';
+      $('field-cust-address').textContent = '—';
+      $('field-cust-acct').textContent = '—';
+      $('field-cust-meter').textContent = '—';
+      $('field-last').value = '';
+      $('field-current').value = '';
+      $('field-notes').value = '';
+      $('field-status').value = 'ACTUAL';
+      this.updateUsagePreview();
+      return;
+    }
+
+    $('field-cust-name').textContent = stop.name || 'Customer';
+    $('field-cust-address').textContent = formatAddress(stop);
+    $('field-cust-acct').textContent = stop.acct || '—';
+    $('field-cust-meter').textContent = stop.meter || '—';
+
+    $('field-last').value = (stop.lastRead != null) ? stop.lastRead : 0;
+    $('field-current').value = '';
+    $('field-notes').value = '';
+    $('field-status').value = 'ACTUAL';
+
+    this.updateUsagePreview();
+  },
+
+  updateUsagePreview(){
+    const unit = $('field-unit').value;
+    const last = parseNum($('field-last').value, 0);
+    const cur = parseNum($('field-current').value, 0);
+    let usage = cur - last;
+    if(usage < 0) usage = 0;
+
+    $('field-usage').textContent = usage.toFixed(2);
+    $('field-usage-unit').textContent = unit;
+
+    const gal = (unit === 'CCF') ? ccfToGallons(usage) : Math.round(usage);
+    $('field-usage-gal').textContent = Number(gal).toLocaleString();
+  },
+
+  prev(){ if(this.idx > 0){ this.idx--; this.loadStop(); } },
+  next(silent=false){
+    if(this.idx < this.routeStops.length-1){ this.idx++; this.loadStop(); }
+    else if(!silent){ toast('End of route', 'Submit to desk when ready.'); }
+  },
+
+  toggleFlag(){
+    const stop = this.currentStop();
+    if(!stop) return;
+    if(this.flagged.has(stop.id)) this.flagged.delete(stop.id);
+    else this.flagged.add(stop.id);
+    this.updateRouteKpis();
+    toast(this.flagged.has(stop.id) ? 'Flagged' : 'Flag cleared', 'Indicator updated.');
+  },
+
+  validateStop(){
+    const last = parseNum($('field-last').value, 0);
+    const curRaw = $('field-current').value;
+    const cur = Number(curRaw);
+    if(curRaw === '' || !Number.isFinite(cur)){
+      showError('field-read-error','Enter current read.');
+      return false;
+    }
+    if(cur < last && $('field-status').value === 'ACTUAL'){
+      showError('field-read-error','Current read must be at least last read (or select Reset / roll-over).');
+      return false;
+    }
+    showError('field-read-error','');
+    return true;
+  },
+
+  saveStop(){
+    if(!this.validateStop()) return;
+
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const stop = this.currentStop();
+    if(!stop) return;
+
+    const unit = $('field-unit').value;
+    const last = parseNum($('field-last').value, 0);
+    const cur = parseNum($('field-current').value, 0);
+    const status = $('field-status').value;
+    const notes = $('field-notes').value || '';
+
+    let usage = Math.max(0, cur - last);
+    let usageGal = (unit === 'CCF') ? ccfToGallons(usage) : Math.round(usage);
+
+    // Persist lastRead back to DMA customer
+    const idx = dma.customers.findIndex(c=>c.id===stop.id);
+    if(idx>=0){
+      dma.customers[idx].lastRead = cur;
+    }
+
+    state._fieldDraft = state._fieldDraft || {};
+    const key = `${dma.id}_${$('field-month').value || ''}_${($('field-route').value || 'Route').trim()}`;
+    state._fieldDraft[key] = state._fieldDraft[key] || { readings: [] };
+
+    const record = {
+      customerId: stop.id,
+      acct: stop.acct || '',
+      meter: stop.meter || '',
+      name: stop.name || '',
+      address: formatAddress(stop),
+      lat: stop.lat || null,
+      lon: stop.lon || null,
+      unit,
+      lastRead: last,
+      currentRead: cur,
+      usage: usage,
+      usageGal: usageGal,
+      status,
+      notes,
+      flagged: this.flagged.has(stop.id),
+      ts: nowISO()
+    };
+
+    const draft = state._fieldDraft[key];
+    const existing = draft.readings.findIndex(r=>r.customerId===stop.id);
+    if(existing>=0) draft.readings[existing] = record;
+    else draft.readings.push(record);
+
+    saveState(state);
+    this.updateRouteKpis();
+    DashboardUI.refresh();
+    toast('Stop saved', (stop.acct || stop.name || 'Customer') + ' recorded.');
+    this.next(true);
+  },
+
+  computeDraftTotals(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const month = $('field-month').value || '';
+    const routeName = ($('field-route').value || 'Route').trim();
+    const key = `${dma.id}_${month}_${routeName}`;
+    const draft = (state._fieldDraft && state._fieldDraft[key]) ? state._fieldDraft[key] : { readings: [] };
+
+    const readings = draft.readings || [];
+    const billedGal = readings
+      .filter(r=> (r.status === 'ACTUAL' || r.status === 'ESTIMATE'))
+      .reduce((s,r)=> s + parseNum(r.usageGal,0), 0);
+
+    const exceptions = readings.filter(r=> !(r.status === 'ACTUAL' || r.status === 'ESTIMATE')).length;
+    const flags = readings.filter(r=> !!r.flagged).length;
+
+    // Stops should reflect total route customer count (not only saved readings)
+    const stops = (this.routeStops && this.routeStops.length) ? this.routeStops.length : (dma.customers||[]).length;
+
+    return { key, month, routeName, readings, billedGal, exceptions, flags, stops };
+  },
+
+  updateRouteKpis(){
+    const t = this.computeDraftTotals();
+    $('field-kpi-stops').textContent = String(t.stops || 0);
+    $('field-kpi-billed').textContent = Number(t.billedGal || 0).toLocaleString();
+    $('field-kpi-exc').textContent = String(t.exceptions || 0);
+    $('field-kpi-flag').textContent = String(t.flags || 0);
+  },
+
+  submitRoute(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    const t = this.computeDraftTotals();
+    if(!t.month){
+      toast('Billing month required', 'Select a billing month before submitting.');
+      return;
+    }
+    if(!t.readings.length){
+      toast('No readings', 'Save at least one reading before submitting.');
+      return;
+    }
+
+    const submission = {
+      id: 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      dmaId: dma.id,
+      dmaName: dma.name,
+      month: t.month,
+      routeName: t.routeName,
+      readerId: ($('field-reader').value || '').trim(),
+      unit: $('field-unit').value,
+      totals: {
+        billedGal: t.billedGal,
+        exceptions: t.exceptions,
+        flags: t.flags,
+        stops: t.stops
+      },
+      readings: t.readings,
+      submittedAt: nowISO()
+    };
+
+    state.routeSubmissions.unshift(submission);
+    if(state._fieldDraft) delete state._fieldDraft[t.key];
+
+    saveState(state);
+
+    toast('Submitted', 'Route is available in Desk / NRW.');
+    DeskUI.recalcAll();
+    DashboardUI.refresh();
+    setActiveTab('tab-desk');
+  },
+
+  navigateCurrent(){
+    const stop = this.currentStop();
+    if(!stop) return;
+    openNavigation(stop.lat, stop.lon, formatAddress(stop));
+  },
+
+  showExceptionsAlert(){
+    const t = this.computeDraftTotals();
+    if(!t.readings.length) return toast('No readings', 'Save stops first.');
+    const exc = t.readings.filter(r=> !(r.status === 'ACTUAL' || r.status === 'ESTIMATE'));
+    if(!exc.length) return toast('No exceptions', 'All readings are Actual or Estimate.');
+    const msg = exc.slice(0,12).map(r=>`• ${r.acct || r.name || 'Customer'} — ${r.status}`).join('\n');
+    alert(`Exceptions (${exc.length}):\n${msg}${exc.length>12 ? '\n…' : ''}`);
+  }
+};
+
+/* =========================
+   DESK UI
+========================= */
+let deskChart = null;
+let dashChart = null;
+
+const DeskUI = {
+  init(){
+    $('dma-save').addEventListener('click', ()=>this.saveDmaFromInputs());
+    $('desk-recalc').addEventListener('click', ()=>this.recalcAll());
+    $('desk-export-report').addEventListener('click', ()=>DataUI.exportDeskReport());
+    $('desk-add-customer').addEventListener('click', ()=>ModalUI.openCustomer());
+    $('desk-add-reservoir').addEventListener('click', ()=>ModalUI.openReservoir());
+    $('desk-export-exc').addEventListener('click', ()=>this.exportExceptionsCSV());
+    $('desk-open-route').addEventListener('click', ()=>this.openLatestRouteMap());
+
+    $('dma-select').addEventListener('change', ()=>{
+      const state = loadState();
+      state.activeDmaId = $('dma-select').value;
+      saveState(state);
+      this.loadActiveDmaToInputs();
+      this.recalcAll();
+      DashboardUI.refresh();
+      MapUI.refresh();
+    });
+
+    $('dma-new').addEventListener('click', ()=>{
+      const state = loadState();
+      const d = newDma();
+      state.dmas.push(d);
+      state.activeDmaId = d.id;
+      saveState(state);
+      this.refreshDmaSelect();
+      this.loadActiveDmaToInputs();
+      this.recalcAll();
+      DashboardUI.refresh();
+      toast('DMA created', 'Update DMA details as needed.');
+    });
+  },
+
+  refreshDmaSelect(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    const sel = $('dma-select');
+    sel.innerHTML = '';
+    state.dmas.forEach(d=>{
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.name || 'DMA';
+      sel.appendChild(opt);
+    });
+    sel.value = dma.id;
+  },
+
+  loadActiveDmaToInputs(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    $('dma-name').value = dma.name || '';
+    $('dma-size').value = dma.sizeSqMi ?? 0;
+    $('dma-connections').value = dma.connections ?? 0;
+
+    $('dma-pumpage-mgd').value = dma.pumpageMgd ?? 0;
+    $('dma-period-days').value = dma.periodDays ?? 30;
+    $('dma-boundary-gal').value = dma.boundaryGalOverride ?? 0;
+    $('dma-pressure').value = dma.pressurePsi ?? 0;
+
+    $('dma-tank-count').value = dma.tankCount ?? 0;
+    $('dma-tank-vol-gal').value = dma.tankVolGal ?? 0;
+
+    $('dma-cost-per-kgal').value = dma.costPerKgal ?? 3.50;
+    $('dma-billing-unit').value = dma.billingUnit ?? 'CCF';
+    $('dma-unbilled-gal').value = dma.unbilledAuthorizedGal ?? 0;
+    $('dma-apparent-pct').value = (dma.apparentLossPct==null ? '' : dma.apparentLossPct);
+  },
+
+  saveDmaFromInputs(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    dma.name = ($('dma-name').value || 'DMA').trim();
+    dma.sizeSqMi = parseNum($('dma-size').value, 0);
+    dma.connections = parseIntSafe($('dma-connections').value, 0);
+
+    dma.pumpageMgd = parseNum($('dma-pumpage-mgd').value, 0);
+    dma.periodDays = Math.max(1, parseIntSafe($('dma-period-days').value, 30));
+    dma.boundaryGalOverride = parseNum($('dma-boundary-gal').value, 0);
+    dma.pressurePsi = parseNum($('dma-pressure').value, 0);
+
+    dma.tankCount = parseIntSafe($('dma-tank-count').value, 0);
+    dma.tankVolGal = parseNum($('dma-tank-vol-gal').value, 0);
+
+    dma.costPerKgal = parseNum($('dma-cost-per-kgal').value, 0);
+    dma.billingUnit = $('dma-billing-unit').value || 'CCF';
+    dma.unbilledAuthorizedGal = parseNum($('dma-unbilled-gal').value, 0);
+
+    const ap = $('dma-apparent-pct').value.trim();
+    dma.apparentLossPct = ap ? (parseNum(ap, 0)) : null;
+
+    const idx = state.dmas.findIndex(d=>d.id===dma.id);
+    state.dmas[idx] = dma;
+    saveState(state);
+
+    this.refreshDmaSelect();
+    this.recalcAll();
+    DashboardUI.refresh();
+    MapUI.refresh();
+    toast('DMA saved', dma.name);
+  },
+
+  latestSubmissionForActiveDma(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    return (state.routeSubmissions || []).find(s=>s.dmaId === dma.id) || null;
+  },
+
+  openLatestRouteMap(){
+    const sub = this.latestSubmissionForActiveDma();
+    if(!sub || !(sub.readings||[]).length){
+      toast('No route submission', 'Submit a route from Meter Reader first.');
+      return;
+    }
+    const points = (sub.readings||[]).map(r=>({
+      lat: r.lat, lon: r.lon, address: r.address, label: r.name || r.acct || 'Customer'
+    })).filter(p=> (p.address && p.address !== '—') || (p.lat!=null && p.lon!=null));
+    openRouteInGoogleMaps(points);
+  },
+
+  calcSivGallons(dma){
+    const override = parseNum(dma.boundaryGalOverride || 0, 0);
+    if(override > 0) return Math.round(override);
+
+    const mgd = parseNum(dma.pumpageMgd || 0, 0);
+    const days = parseNum(dma.periodDays || 30, 30);
+    return Math.round(mgd * 1000000 * days);
+  },
+
+  recalcAll(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const sub = this.latestSubmissionForActiveDma();
+
+    $('desk-latest-route').textContent = sub ? (sub.routeName || 'Route') : '—';
+    $('desk-latest-month').textContent = sub ? (sub.month || '—') : '—';
+    $('desk-latest-exc').textContent = sub ? String(sub.totals.exceptions || 0) : '0';
+    $('desk-latest-flag').textContent = sub ? String(sub.totals.flags || 0) : '0';
+
+    const billedGal = sub ? parseNum(sub.totals.billedGal || 0, 0) : 0;
+    const unbilledGal = parseNum(dma.unbilledAuthorizedGal || 0, 0);
+
+    $('desk-field-billed-gal').textContent = billedGal.toLocaleString();
+    $('desk-unbilled-gal').textContent = unbilledGal.toLocaleString();
+
+    const siv = this.calcSivGallons(dma);
+    const authorized = billedGal + unbilledGal;
+    const nrw = Math.max(0, siv - authorized);
+    const nrwPct = siv > 0 ? (nrw / siv) * 100 : 0;
+
+    const costPerKgal = parseNum(dma.costPerKgal || 0, 0);
+    const nrwCost = (nrw / 1000) * costPerKgal;
+
+    let apparentGal = null, realGal = null;
+    if(dma.apparentLossPct != null){
+      apparentGal = clamp((parseNum(dma.apparentLossPct,0)/100) * siv, 0, nrw);
+      realGal = Math.max(0, nrw - apparentGal);
+    }
+
+    $('desk-siv').textContent = siv.toLocaleString();
+    $('desk-billed').textContent = billedGal.toLocaleString();
+    $('desk-nrw').textContent = nrw.toLocaleString();
+    $('desk-nrw-pct').textContent = nrwPct.toFixed(1) + '%';
+    $('desk-nrw-cost').textContent = fmtMoney(nrwCost);
+
+    this.renderDeskChart({ billedGal, unbilledGal, nrw, apparentGal, realGal });
+    DashboardUI.setKpis({ siv, billedGal, nrw, nrwPct, nrwCost });
+    this.renderExceptionsTable(sub);
+  },
+
+  renderDeskChart(vals){
+    const ctx = $('desk-chart').getContext('2d');
+    if(deskChart){ try{ deskChart.destroy(); }catch(e){} }
+
+    const labels = [];
+    const data = [];
+    labels.push('Billed'); data.push(vals.billedGal);
+    labels.push('Unbilled'); data.push(vals.unbilledGal);
+
+    if(vals.apparentGal != null && vals.realGal != null){
+      labels.push('Apparent'); data.push(vals.apparentGal);
+      labels.push('Real'); data.push(vals.realGal);
+    } else {
+      labels.push('NRW'); data.push(vals.nrw);
+    }
+
+    deskChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Gallons', data }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { title: { display: true, text: 'Gallons' } } }
+      }
+    });
+  },
+
+  renderExceptionsTable(sub){
+    const tbody = $('desk-exc-tbody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+
+    if(!sub || !(sub.readings||[]).length){
+      tbody.innerHTML = `<tr><td class="px-3 py-3 text-slate-500" colspan="5">No submitted route available.</td></tr>`;
+      return;
+    }
+
+    const rows = (sub.readings||[])
+      .filter(r=> !(r.status === 'ACTUAL' || r.status === 'ESTIMATE') || !!r.flagged)
+      .sort((a,b)=> (b.flagged===true) - (a.flagged===true));
+
+    if(!rows.length){
+      tbody.innerHTML = `<tr><td class="px-3 py-3 text-slate-500" colspan="5">No exceptions or flags in latest route.</td></tr>`;
+      return;
+    }
+
+    rows.slice(0,250).forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.className = 'border-t';
+      tr.style.borderColor = 'rgba(6,182,212,.10)';
+      tr.innerHTML = `
+        <td class="px-3 py-2 font-semibold text-slate-800">${escapeHtml(r.acct||'—')}</td>
+        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.name||'—')}</td>
+        <td class="px-3 py-2"><span class="pill px-2 py-1 rounded-full text-xs font-semibold">${escapeHtml(r.status||'—')}</span></td>
+        <td class="px-3 py-2 text-slate-700">${Number(r.usageGal||0).toLocaleString()}</td>
+        <td class="px-3 py-2">${r.flagged ? '<span class="text-red-600 font-bold">YES</span>' : '<span class="text-slate-400">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  exportExceptionsCSV(){
+    const sub = this.latestSubmissionForActiveDma();
+    if(!sub || !(sub.readings||[]).length){
+      toast('Nothing to export', 'No latest route readings.');
+      return;
+    }
+    const rows = [['account','customer','status','usage_gal','flagged','notes','timestamp']];
+    (sub.readings||[])
+      .filter(r=> !(r.status === 'ACTUAL' || r.status === 'ESTIMATE') || !!r.flagged)
+      .forEach(r=>{
+        rows.push([r.acct||'', r.name||'', r.status||'', r.usageGal||0, r.flagged?1:0, r.notes||'', r.ts||'']);
+      });
+    downloadBlob(toCSV(rows), `Exceptions_${sub.dmaName.replace(/\s+/g,'_')}_${sub.month}.csv`, 'text/csv');
+  }
+};
+
+/* =========================
+   DASHBOARD
+========================= */
+const DashboardUI = {
+  kpis: { siv:0, billedGal:0, nrw:0, nrwPct:0, nrwCost:0 },
+
+  setKpis(k){
+    this.kpis = k;
+    $('kpi-siv').textContent = Number(k.siv||0).toLocaleString();
+    $('kpi-siv-sub').textContent = 'gal';
+    $('kpi-billed').textContent = Number(k.billedGal||0).toLocaleString();
+    $('kpi-nrw').textContent = Number(k.nrw||0).toLocaleString();
+    $('kpi-nrw-sub').textContent = `${(k.nrwPct||0).toFixed(1)}%`;
+    $('kpi-nrw-cost').textContent = fmtMoney(k.nrwCost||0);
+    this.renderChart();
+  },
+
+  refresh(){
+    DeskUI.recalcAll();
+    const sub = DeskUI.latestSubmissionForActiveDma();
+    if(sub){
+      $('today-route').textContent = sub.routeName || 'Route';
+      $('today-stops').textContent = String(sub.totals.stops || 0);
+      $('today-exc').textContent = String(sub.totals.exceptions || 0);
+      $('today-done').textContent = String((sub.readings||[]).length || 0);
+    } else {
+      $('today-route').textContent = 'Not available';
+      $('today-stops').textContent = '0';
+      $('today-exc').textContent = '0';
+      $('today-done').textContent = '0';
+    }
+  },
+
+  renderChart(){
+    const ctx = $('dashboard-chart').getContext('2d');
+    if(dashChart){ try{ dashChart.destroy(); }catch(e){} }
+    dashChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: ['Billed', 'NRW'], datasets: [{ data: [this.kpis.billedGal || 0, this.kpis.nrw || 0] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+};
+
+/* =========================
+   MAP
+========================= */
+let mapInstance = null;
+let customerLayer = null;
+let reservoirLayer = null;
+
+const MapUI = {
+  ensureInitAndRefresh(){
+    if(!mapInstance){
+      mapInstance = L.map('map', { zoomControl: true }).setView([33.5186, -86.8104], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(mapInstance);
+
+      customerLayer = L.layerGroup().addTo(mapInstance);
+      reservoirLayer = L.layerGroup().addTo(mapInstance);
+
+      $('map-refresh').addEventListener('click', ()=>this.refresh());
+      $('map-fit').addEventListener('click', ()=>this.fitToDma());
+      $('map-add-res').addEventListener('click', ()=>ModalUI.openReservoir());
+      $('map-add-cust').addEventListener('click', ()=>ModalUI.openCustomer());
+      $('map-open-route').addEventListener('click', ()=>this.openDmaRoute());
+
+      $('map-show-customers').addEventListener('change', ()=>this.refresh());
+      $('map-show-reservoirs').addEventListener('change', ()=>this.refresh());
+    }
+    this.refresh();
+  },
+
+  refresh(){
+    if(!mapInstance) return;
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+
+    customerLayer.clearLayers();
+    reservoirLayer.clearLayers();
+
+    const showCustomers = $('map-show-customers').checked;
+    const showReservoirs = $('map-show-reservoirs').checked;
+
+    if(showCustomers){
+      (dma.customers || []).forEach(c=>{
+        if(c.lat == null || c.lon == null) return;
+        const m = L.circleMarker([Number(c.lat), Number(c.lon)], { radius: 7, weight: 2, fillOpacity: 0.6 });
+        const html = `
+          <div style="min-width:240px">
+            <div style="font-weight:800;margin-bottom:2px">${escapeHtml(c.name || 'Customer')}</div>
+            <div style="font-size:12px;color:#555;margin-bottom:6px">${escapeHtml(formatAddress(c))}</div>
+            <div style="font-size:12px;color:#666">Account: ${escapeHtml(c.acct||'—')} • Meter: ${escapeHtml(c.meter||'—')}</div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="window.__navTo(${Number(c.lat)},${Number(c.lon)},'${escapeJs(formatAddress(c))}')" style="padding:6px 10px;border:1px solid rgba(6,182,212,.25);border-radius:10px;background:#fff;font-weight:800;font-size:12px;">Navigate</button>
             </div>
-            <div style="text-align:right;font-size:12px">${selMonth}</div>
-          </div>
-          <hr style="margin:8px 0">
-          <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:280px">
-              <h4 style="margin:0 0 8px 0">Inputs</h4>
-              <table style="width:100%;font-size:13px;border-collapse:collapse">
-                <tr><td style="padding:6px 8px;color:#333">Billing Month</td><td style="padding:6px 8px;text-align:right">${billingMonthEl.value || 'N/A'}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Last Read</td><td style="padding:6px 8px;text-align:right">${lastReadEl.value || 'N/A'} ${lastReadDateEl.value? '('+lastReadDateEl.value+')':''}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Current Read</td><td style="padding:6px 8px;text-align:right">${currentReadEl.value || 'N/A'} ${currentReadDateEl.value? '('+currentReadDateEl.value+')':''}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Water Base</td><td style="padding:6px 8px;text-align:right">${toMoney(waterBaseEl.value)}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Water Mode</td><td style="padding:6px 8px;text-align:right">${(waterModeTiered && waterModeTiered.checked)? 'Tiered' : 'Flat'}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Water Rate</td><td style="padding:6px 8px;text-align:right">${toMoney(waterRateEl.value)}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Utility Tax</td><td style="padding:6px 8px;text-align:right">${Number(utilityTaxEl.value || 0).toFixed(2)}%</td></tr>
-              </table>
-            </div>
-            <div style="flex:1;min-width:260px">
-              <h4 style="margin:0 0 8px 0">Results</h4>
-              <table style="width:100%;font-size:13px;border-collapse:collapse">
-                <tr><td style="padding:6px 8px;color:#333">CCF Used</td><td style="padding:6px 8px;text-align:right">${calc.ccf.toFixed(2)}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Gallons</td><td style="padding:6px 8px;text-align:right">${calc.gallons.toLocaleString()}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Water Charge</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.waterCharge)}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Sewer Charge</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.sewerCharge)}</td></tr>
-                <tr><td style="padding:6px 8px;color:#333">Utility Tax (water only)</td><td style="padding:6px 8px;text-align:right">${toMoney(calc.taxAmount)}</td></tr>
-                <tr><td style="padding:6px 8px;font-weight:700">Total</td><td style="padding:6px 8px;font-weight:700;text-align:right">${toMoney(calc.total)}</td></tr>
-              </table>
-            </div>
-          </div>
-          ${monthTable}
-          <div style="margin-top:10px">
-            <h4 style="margin:6px 0">Yearly Summary — ${selectedYear}</h4>
-            <table style="width:100%;font-size:13px;border-collapse:collapse">
-              <tr><td style="padding:6px 8px;color:#333">Total Usage (CCF)</td><td style="padding:6px 8px;text-align:right">${thisYear.totalCcf.toFixed(2)}</td></tr>
-              <tr><td style="padding:6px 8px;color:#333">Months Recorded</td><td style="padding:6px 8px;text-align:right">${thisYear.months || 0}</td></tr>
-              <tr><td style="padding:6px 8px;color:#333">Total Cost</td><td style="padding:6px 8px;text-align:right">${toMoney(thisYear.totalCost)}</td></tr>
-              <tr><td style="padding:6px 8px;color:#333">Avg / month (CCF)</td><td style="padding:6px 8px;text-align:right">${thisYear.months? (thisYear.totalCcf/thisYear.months).toFixed(2) : '—'}</td></tr>
-              <tr><td style="padding:6px 8px;color:#333">Change vs ${Number(selectedYear)-1}</td><td style="padding:6px 8px;text-align:right">${pctChange==null? '—' : ((pctChange>=0?'+':'')+pctChange.toFixed(1)+'%')}</td></tr>
-            </table>
-          </div>
-            <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;align-items:center">
-            <div>Built by Solomon Ofori Manu, All rights reserved</div>
-            <div style="font-size:11px;color:#666">OFORI</div>
           </div>
         `;
-        // Try a popup print window first — more reliable on mobile browsers.
-        try{
-          // build a minimal printable HTML document
-          const printStyles = `
-            @page { size: A4; margin: 6mm; }
-            body { font-family: Arial, Helvetica, sans-serif; color: #04202b; margin: 6mm; }
-            h2{ margin:0 0 6px 0; }
-            table{ width:100%; border-collapse: collapse; font-size: 11px; }
-            table td, table th { padding:6px; border-bottom:1px solid #eee; }
-            table th { text-align:left; color: #04202b; }
-            @media print { img { max-width:100%; } }
-          `;
-
-          const printableHTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${document.title}</title><style>${printStyles}</style></head><body>${reportHtml}<script>window.onload=function(){ setTimeout(function(){ try{ window.print(); }catch(e){} try{ window.close(); }catch(e){} },250); };<\/script></body></html>`;
-
-          const popup = window.open('', '_blank');
-          if(popup && popup.document){
-            popup.document.open();
-            popup.document.write(printableHTML);
-            popup.document.close();
-            // done — popup will call print and close itself
-            return;
-          }
-        }catch(e){ /* fall through to inline print fallback */ }
-
-        // fallback: use inline report with injected CSS and scale-to-fit (for desktop / blocked popups)
-        let injectedStyle;
-        try{
-          const css = `
-            @page { size: A4; margin: 6mm }
-            @media print {
-              html, body { height: 100%; }
-              body * { visibility: hidden !important; }
-              #print-report, #print-report * { visibility: visible !important; }
-              #print-report { position: fixed !important; left: 6mm; top: 6mm; width: calc(210mm - 12mm) !important; box-sizing: border-box !important; }
-              table { page-break-inside: avoid !important; }
-              #print-report { font-size: 11px !important; line-height: 1.12 !important; }
-              h2, h4 { margin: 0 0 6px 0 !important; }
-            }
-          `;
-          injectedStyle = document.getElementById('ofori-print-style');
-          if(!injectedStyle){ injectedStyle = document.createElement('style'); injectedStyle.id = 'ofori-print-style'; injectedStyle.type = 'text/css'; document.head.appendChild(injectedStyle); }
-          injectedStyle.innerHTML = css;
-
-          const pxPerMm = 96/25.4;
-          const pageWidthMm = 210; const marginMm = 6;
-          const availW = (pageWidthMm - marginMm*2) * pxPerMm;
-          const availH = (297 - marginMm*2) * pxPerMm;
-          // inject the report HTML into the hidden container for inline printing
-          container.innerHTML = reportHtml;
-          container.style.display = 'block';
-          container.style.padding = '18px';
-          container.style.fontFamily = 'Arial, Helvetica, sans-serif';
-          container.style.color = '#111';
-          container.style.width = (pageWidthMm - marginMm*2) + 'mm';
-          container.style.boxSizing = 'border-box';
-          container.style.fontSize = '11px';
-          const contentW = Math.max(1, container.scrollWidth);
-          const contentH = Math.max(1, container.scrollHeight);
-          const scaleW = availW / contentW;
-          const scaleH = availH / contentH;
-          const scale = Math.min(1, scaleW, scaleH);
-          container.style.transformOrigin = 'top left';
-          container.style.transform = `scale(${scale})`;
-        }catch(e){ /* ignore */ }
-
-        setTimeout(()=>{
-            try{ window.print(); }
-          finally{
-            try{ if(injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle); }catch(e){}
-            // cleanup the inline container (hide and remove content)
-            try{ container.style.display='none'; container.style.transform=''; container.style.fontSize=''; container.style.width=''; container.innerHTML = ''; }catch(e){}
-          }
-        }, 400);
-      }
-
-      // events
-  lastReadEl.addEventListener('input', autoCalculateReads);
-  currentReadEl.addEventListener('input', autoCalculateReads);
-  // show/hide tiers and water-rate based on selected mode
-  function refreshTierVisibility(){
-    if(waterModeTiered && waterModeTiered.checked){
-      tiersContainer.classList.remove('hidden');
-      if(waterRateContainer) waterRateContainer.classList.add('hidden');
-      if(waterRateEl) waterRateEl.disabled = true;
-  if(waterRateContainer) waterRateContainer.setAttribute('aria-hidden','true');
-  if(tiersContainer) tiersContainer.setAttribute('aria-hidden','false');
-    } else {
-      tiersContainer.classList.add('hidden');
-      if(waterRateContainer) waterRateContainer.classList.remove('hidden');
-      if(waterRateEl) waterRateEl.disabled = false;
-  if(waterRateContainer) waterRateContainer.setAttribute('aria-hidden','false');
-  if(tiersContainer) tiersContainer.setAttribute('aria-hidden','true');
+        m.bindPopup(html);
+        m.addTo(customerLayer);
+      });
     }
-    // update visible results immediately when mode changes
-    try{ calculateCharges(); }catch(e){/* ignore during init */}
+
+    if(showReservoirs){
+      (dma.reservoirs || []).forEach(r=>{
+        if(r.lat == null || r.lon == null) return;
+        const icon = L.divIcon({
+          className: 'ofori-res-icon',
+          html: `<div style="width:18px;height:18px;border-radius:6px;background:rgba(6,182,212,.95);border:2px solid #fff;box-shadow:0 10px 22px rgba(6,182,212,.25)"></div>`,
+          iconSize: [18,18],
+          iconAnchor: [9,9]
+        });
+        const m = L.marker([Number(r.lat), Number(r.lon)], { icon });
+        const html = `
+          <div style="min-width:240px">
+            <div style="font-weight:800;margin-bottom:2px">${escapeHtml(r.name || 'Reservoir')}</div>
+            <div style="font-size:12px;color:#666">Type: ${escapeHtml(r.type||'—')}</div>
+            <div style="font-size:12px;color:#666">Capacity: ${Number(r.capacityGal||0).toLocaleString()} gal</div>
+            <div style="font-size:12px;color:#666">Zone: ${escapeHtml(r.zone||'—')}</div>
+            <div style="margin-top:10px">
+              <button onclick="window.__navTo(${Number(r.lat)},${Number(r.lon)},'${escapeJs(r.name||'Reservoir')}')" style="padding:6px 10px;border:1px solid rgba(6,182,212,.25);border-radius:10px;background:#fff;font-weight:800;font-size:12px;">Navigate</button>
+            </div>
+          </div>
+        `;
+        m.bindPopup(html);
+        m.addTo(reservoirLayer);
+      });
+    }
+  },
+
+  fitToDma(){
+    if(!mapInstance) return;
+    const bounds = [];
+    customerLayer.eachLayer(l=>{ if(l.getLatLng) bounds.push(l.getLatLng()); });
+    reservoirLayer.eachLayer(l=>{ if(l.getLatLng) bounds.push(l.getLatLng()); });
+
+    if(!bounds.length) return toast('No GPS points', 'Add customers/reservoirs with coordinates or save an address to auto-pin.');
+    const b = L.latLngBounds(bounds);
+    mapInstance.fitBounds(b.pad(0.15));
+  },
+
+  openDmaRoute(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const points = (dma.customers||[]).map(c=>({
+      lat: c.lat, lon: c.lon, address: formatAddress(c), label: c.name || c.acct || 'Customer'
+    })).filter(p=> (p.address && p.address !== '—') || (p.lat!=null && p.lon!=null));
+    openRouteInGoogleMaps(points);
   }
-  if(waterModeFlat) waterModeFlat.addEventListener('change', ()=> refreshTierVisibility());
-  if(waterModeTiered) waterModeTiered.addEventListener('change', ()=> refreshTierVisibility());
+};
 
-  // dynamic tier management
-  const tiersList = $('tiers-list');
-  const addTierBtn = $('add-tier');
-  const resetTiersBtn = $('reset-tiers');
-  const tierTemplate = $('tier-row-template');
+/* =========================
+   MODALS (Customer/Reservoir)
+========================= */
+const ModalUI = {
+  openCustomer(){
+    showError('customer-form-error','');
+    $('customer-form').reset();
+    CustomerSuggest.clear();
+    $('cust-save-text').textContent = 'Save customer';
+    $('cust-save-btn').disabled = false;
+    $('customer-modal').style.display='flex';
+  },
+  closeCustomer(){
+    $('customer-modal').style.display='none';
+    CustomerSuggest.clear();
+  },
 
-  function createTierRow(limit=0, rate=0){
-    const tpl = tierTemplate.content.cloneNode(true);
-    const wrapper = tpl.querySelector('div');
-    wrapper.classList.add('tier-row');
-    const limitEl = wrapper.querySelector('.tier-limit');
-    const rateEl = wrapper.querySelector('.tier-rate');
-    const idxEl = wrapper.querySelector('.tier-index');
-    limitEl.value = limit;
-    rateEl.value = rate;
-    // remove button
-    const removeBtn = wrapper.querySelector('.remove-tier');
-    removeBtn.addEventListener('click', ()=>{ wrapper.remove(); refreshTierLabels(); calculateCharges(); updateChart(); });
-    // recalc on input
-    [limitEl, rateEl].forEach(el=> el.addEventListener('input', ()=>{ refreshTierLabels(); try{ calculateCharges(); }catch(e){} updateChart(); }));
-    return wrapper;
+  openReservoir(){
+    showError('reservoir-form-error','');
+    $('reservoir-form').reset();
+    $('reservoir-modal').style.display='flex';
+  },
+  closeReservoir(){ $('reservoir-modal').style.display='none'; }
+};
+
+$('customer-modal-close').addEventListener('click', ()=>ModalUI.closeCustomer());
+$('customer-modal-cancel').addEventListener('click', ()=>ModalUI.closeCustomer());
+$('reservoir-modal-close').addEventListener('click', ()=>ModalUI.closeReservoir());
+$('reservoir-modal-cancel').addEventListener('click', ()=>ModalUI.closeReservoir());
+
+/* =========================
+   Address Suggest (debounced)
+========================= */
+const CustomerSuggest = {
+  timer: null,
+  open(items){
+    const box = $('cust-suggest');
+    if(!items || !items.length){ this.clear(); return; }
+    box.innerHTML = items.map((it, idx)=>`
+      <div class="suggest-item" data-idx="${idx}">
+        <div class="text-sm font-semibold text-slate-800">${escapeHtml(it.display)}</div>
+        <div class="text-xs text-slate-500">Lat ${Number(it.lat).toFixed(5)} • Lon ${Number(it.lon).toFixed(5)}</div>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+
+    box.querySelectorAll('.suggest-item').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const i = parseInt(el.dataset.idx, 10);
+        const item = items[i];
+        if(!item) return;
+        $('cust-address').value = item.display;
+        $('cust-lat').value = item.lat;
+        $('cust-lon').value = item.lon;
+        this.clear();
+      });
+    });
+  },
+  clear(){
+    const box = $('cust-suggest');
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+};
+
+$('cust-address').addEventListener('input', ()=>{
+  const q = ($('cust-address').value||'').trim();
+  clearTimeout(CustomerSuggest.timer);
+  CustomerSuggest.timer = setTimeout(async ()=>{
+    try{
+      const items = await nominatimSearch(q);
+      CustomerSuggest.open(items);
+    }catch(e){
+      CustomerSuggest.clear();
+    }
+  }, 220);
+});
+
+document.addEventListener('click', (e)=>{
+  const box = $('cust-suggest');
+  if(!box) return;
+  const addr = $('cust-address');
+  if(e.target === addr || box.contains(e.target)) return;
+  CustomerSuggest.clear();
+});
+
+/* =========================
+   Customer Save (auto-geocode if needed)
+========================= */
+$('customer-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const acct = ($('cust-acct').value||'').trim();
+  if(!acct){ showError('customer-form-error','Account number is required.'); return; }
+
+  $('cust-save-btn').disabled = true;
+  $('cust-save-text').textContent = 'Saving...';
+  showError('customer-form-error','');
+
+  const state = loadState();
+  const dma = ensureActiveDma(state);
+
+  const addressRaw = ($('cust-address').value||'').trim();
+  const parsed = parseAddress(addressRaw);
+
+  let lat = ($('cust-lat').value||'').trim() === '' ? null : parseNum($('cust-lat').value, null);
+  let lon = ($('cust-lon').value||'').trim() === '' ? null : parseNum($('cust-lon').value, null);
+
+  // Auto-geocode if GPS missing but address exists
+  if((lat==null || lon==null) && addressRaw){
+    try{
+      const geo = await geocodeAddress(addressRaw);
+      if(geo && geo.lat!=null && geo.lon!=null){
+        lat = geo.lat;
+        lon = geo.lon;
+      }
+    }catch(err){
+      // silently continue
+    }
   }
 
-  function refreshTierLabels(){
-    const rows = tiersList.querySelectorAll('.tier-row');
-    rows.forEach((r,i)=>{ const idx = r.querySelector('.tier-index'); if(idx) idx.textContent = (i+1); });
-  }
-
-  function resetDefaultTiers(){
-    tiersList.innerHTML = '';
-    tiersList.appendChild(createTierRow(10,2.50));
-    tiersList.appendChild(createTierRow(20,3.50));
-    tiersList.appendChild(createTierRow(99999,5.00));
-    refreshTierLabels();
-  }
-
-  addTierBtn.addEventListener('click', ()=>{ tiersList.appendChild(createTierRow(0,0.00)); refreshTierLabels(); calculateCharges(); updateChart(); });
-  resetTiersBtn.addEventListener('click', ()=>{ resetDefaultTiers(); calculateCharges(); updateChart(); });
-
-  // initialize tiers list with defaults if empty
-  (function initTiers(){ if(tiersList){ if(!tiersList.children.length) resetDefaultTiers(); } })();
-
-  // recalc when user edits rates or other charge inputs for immediate feedback
-  [waterRateEl, utilityTaxEl, waterBaseEl, sewerBaseEl, sewerRateEl].forEach(el=>{
-    if(!el) return;
-    el.addEventListener('input', ()=> { try{ calculateCharges(); }catch(e){} updateChart(); });
+  dma.customers.push({
+    id: 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    acct,
+    name: ($('cust-name').value||'').trim(),
+    meter: ($('cust-meter').value||'').trim(),
+    addressRaw,
+    ...parsed,
+    lat: (lat==null || !Number.isFinite(lat)) ? null : lat,
+    lon: (lon==null || !Number.isFinite(lon)) ? null : lon,
+    lastRead: 0
   });
-      sewerEnabledEl.addEventListener('change', ()=> { if(sewerEnabledEl.checked) sewerFields.classList.remove('hidden'); else sewerFields.classList.add('hidden'); });
-  calcBtn.addEventListener('click', ()=> { calculateCharges(); updateChart(); });
-  saveBtn.addEventListener('click', ()=>{ if(!validateAll()) return; saveMonth(); updateChart(); });
-  printBtn.addEventListener('click', ()=> printReport());
-      yearSelect.addEventListener('change', updateYearSummary);
 
-      // Authentication event listeners
-      function setupAuthEventListeners() {
-        // Show/hide forms
-        document.getElementById('show-signup').addEventListener('click', () => {
-          document.getElementById('login-form').style.display = 'none';
-          document.getElementById('signup-form').style.display = 'block';
-          clearAuthErrors();
-        });
+  saveState(state);
+  ModalUI.closeCustomer();
+  toast('Customer added', acct);
+  MapUI.refresh();
+  DashboardUI.refresh();
 
-        document.getElementById('show-login').addEventListener('click', () => {
-          document.getElementById('signup-form').style.display = 'none';
-          document.getElementById('login-form').style.display = 'block';
-          clearAuthErrors();
-        });
+  $('cust-save-btn').disabled = false;
+  $('cust-save-text').textContent = 'Save customer';
+});
 
-        // Login form
-        document.getElementById('login-form-element').addEventListener('submit', (e) => {
-          e.preventDefault();
-          const email = document.getElementById('login-email').value.trim();
-          const password = document.getElementById('login-password').value;
-          
-          try {
-            authManager.login(email, password);
-            authManager.showMainApp();
-            clearAuthErrors();
-            // Refresh data for new user
-            renderRecords();
-            updateYearSelect();
-            autoCalculateReads();
-          } catch (error) {
-            showAuthError('login-error', error.message);
-          }
-        });
+$('reservoir-form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const name = ($('res-name').value||'').trim();
+  const lat = parseNum($('res-lat').value, NaN);
+  const lon = parseNum($('res-lon').value, NaN);
 
-        // Signup form
-        document.getElementById('signup-form-element').addEventListener('submit', (e) => {
-          e.preventDefault();
-          const name = document.getElementById('signup-name').value.trim();
-          const email = document.getElementById('signup-email').value.trim();
-          const password = document.getElementById('signup-password').value;
-          const confirmPassword = document.getElementById('signup-confirm-password').value;
-          
-          try {
-            if (password !== confirmPassword) {
-              throw new Error('Passwords do not match');
-            }
-            
-            authManager.register(name, email, password);
-            authManager.login(email, password);
-            authManager.showMainApp();
-            clearAuthErrors();
-            // Initialize data for new user
-            renderRecords();
-            updateYearSelect();
-            autoCalculateReads();
-          } catch (error) {
-            showAuthError('signup-error', error.message);
-          }
-        });
+  if(!name){ showError('reservoir-form-error','Name is required.'); return; }
+  if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+    showError('reservoir-form-error','Latitude and longitude are required.');
+    return;
+  }
 
-        // Logout button
-        document.getElementById('logout-btn').addEventListener('click', () => {
-          if (confirm('Are you sure you want to logout?')) {
-            authManager.logout();
-          }
-        });
+  const state = loadState();
+  const dma = ensureActiveDma(state);
+
+  dma.reservoirs.push({
+    id: 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    name,
+    type: $('res-type').value || '',
+    capacityGal: parseNum($('res-cap').value, 0),
+    lat, lon,
+    zone: ($('res-zone').value||'').trim(),
+    notes: ($('res-notes').value||'').trim()
+  });
+
+  saveState(state);
+  ModalUI.closeReservoir();
+  toast('Reservoir added', name);
+  MapUI.refresh();
+});
+
+/* =========================
+   IMPORT / EXPORT
+========================= */
+const DataUI = {
+  init(){
+    $('export-json').addEventListener('click', ()=>this.exportJSON());
+    $('export-customers-csv').addEventListener('click', ()=>this.exportCustomersCSV());
+    $('export-routes-csv').addEventListener('click', ()=>this.exportRoutesCSV());
+    $('import-json').addEventListener('click', ()=>this.importJSON());
+  },
+
+  exportJSON(){
+    const state = loadState();
+    const payload = { exportedAt: nowISO(), version: 2, data: {
+      activeDmaId: state.activeDmaId, dmas: state.dmas, routeSubmissions: state.routeSubmissions
+    }};
+    downloadBlob(JSON.stringify(payload, null, 2), `OFORI_DMA_NRW_Export_${nowISO().slice(0,10)}.json`, 'application/json');
+  },
+
+  exportCustomersCSV(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const rows = [['dmaId','dmaName','customerId','account','name','meter','address','city','state','zip','lat','lon','lastRead']];
+    (dma.customers||[]).forEach(c=>{
+      rows.push([ dma.id, dma.name, c.id, c.acct||'', c.name||'', c.meter||'',
+        (c.addressRaw||c.address||''), c.city||'', c.state||'', c.zip||'',
+        c.lat ?? '', c.lon ?? '', c.lastRead ?? '' ]);
+    });
+    downloadBlob(toCSV(rows), `Customers_${dma.name.replace(/\s+/g,'_')}.csv`, 'text/csv');
+  },
+
+  exportRoutesCSV(){
+    const state = loadState();
+    const rows = [['submissionId','dmaId','dmaName','month','routeName','readerId','billedGal','exceptions','flags','stops','submittedAt']];
+    (state.routeSubmissions||[]).forEach(s=>{
+      rows.push([ s.id, s.dmaId, s.dmaName, s.month, s.routeName, s.readerId,
+        s.totals?.billedGal ?? 0, s.totals?.exceptions ?? 0, s.totals?.flags ?? 0, s.totals?.stops ?? 0, s.submittedAt ]);
+    });
+    downloadBlob(toCSV(rows), `RouteSubmissions_${nowISO().slice(0,10)}.csv`, 'text/csv');
+  },
+
+  exportDeskReport(){
+    const state = loadState();
+    const dma = ensureActiveDma(state);
+    const sub = DeskUI.latestSubmissionForActiveDma();
+    const siv = DeskUI.calcSivGallons(dma);
+    const billed = sub ? parseNum(sub.totals.billedGal||0,0) : 0;
+    const unbilled = parseNum(dma.unbilledAuthorizedGal||0,0);
+    const nrw = Math.max(0, siv - (billed + unbilled));
+    const nrwPct = siv>0 ? (nrw/siv)*100 : 0;
+    const nrwCost = (nrw/1000) * parseNum(dma.costPerKgal||0,0);
+
+    const report = {
+      generatedAt: nowISO(),
+      dma: {
+        id: dma.id, name: dma.name, sizeSqMi: dma.sizeSqMi, connections: dma.connections,
+        pumpageMgd: dma.pumpageMgd, periodDays: dma.periodDays, boundaryGalOverride: dma.boundaryGalOverride,
+        tankCount: dma.tankCount, tankVolGal: dma.tankVolGal, pressurePsi: dma.pressurePsi,
+        costPerKgal: dma.costPerKgal, unbilledAuthorizedGal: dma.unbilledAuthorizedGal, apparentLossPct: dma.apparentLossPct
+      },
+      latestSubmission: sub ? {
+        id: sub.id, month: sub.month, routeName: sub.routeName, readerId: sub.readerId,
+        totals: sub.totals, submittedAt: sub.submittedAt
+      } : null,
+      results: { siv, billed, unbilled, nrw, nrwPct, nrwCost }
+    };
+
+    downloadBlob(JSON.stringify(report, null, 2), `NRW_Report_${dma.name.replace(/\s+/g,'_')}_${nowISO().slice(0,10)}.json`, 'application/json');
+  },
+
+  importJSON(){
+    const f = $('import-file').files && $('import-file').files[0];
+    if(!f) return this.msg('Select a JSON file first.', true);
+
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const parsed = safeJSONParse(reader.result, null);
+      if(!parsed || !parsed.data) return this.msg('Invalid JSON format.', true);
+
+      const state = loadState();
+      const incoming = parsed.data;
+
+      const byId = new Map((state.dmas||[]).map(d=>[d.id, d]));
+      (incoming.dmas||[]).forEach(d=> byId.set(d.id, d));
+      state.dmas = Array.from(byId.values());
+
+      const subById = new Map((state.routeSubmissions||[]).map(s=>[s.id, s]));
+      (incoming.routeSubmissions||[]).forEach(s=> subById.set(s.id, s));
+      state.routeSubmissions = Array.from(subById.values()).sort((a,b)=> (b.submittedAt||'').localeCompare(a.submittedAt||''));
+
+      if(incoming.activeDmaId && state.dmas.find(d=>d.id===incoming.activeDmaId)){
+        state.activeDmaId = incoming.activeDmaId;
+      } else if(!state.activeDmaId && state.dmas.length){
+        state.activeDmaId = state.dmas[0].id;
       }
 
-      function showAuthError(elementId, message) {
-        const errorEl = document.getElementById(elementId);
-        if (errorEl) {
-          errorEl.textContent = message;
-          errorEl.style.display = 'block';
-        }
-      }
+      saveState(state);
 
-      function clearAuthErrors() {
-        ['login-error', 'signup-error'].forEach(id => {
-          const errorEl = document.getElementById(id);
-          if (errorEl) {
-            errorEl.textContent = '';
-            errorEl.style.display = 'none';
-          }
-        });
-      }
+      DeskUI.refreshDmaSelect();
+      DeskUI.loadActiveDmaToInputs();
+      DeskUI.recalcAll();
+      DashboardUI.refresh();
+      MapUI.refresh();
+      this.msg('Import complete. Data merged successfully.', false);
+      toast('Imported', 'Data merged.');
+    };
+    reader.readAsText(f);
+  },
 
-  (function init(){ 
-    // Setup authentication first
-    setupAuthEventListeners();
-    
-    // Only initialize app data if user is authenticated
-    if (authManager.currentUser) {
-      const state = loadState(); 
-      if(state.address) addressEl.value = state.address; 
-      if(state.meter) meterEl.value = state.meter; 
-      renderRecords(); 
-      updateYearSelect(); 
-      autoCalculateReads(); 
-      refreshTierVisibility();
+  msg(text, isError){
+    const el = $('data-msg');
+    el.textContent = text;
+    el.className = isError ? 'text-sm text-red-700 mt-3' : 'text-sm text-green-700 mt-3';
+  }
+};
+
+function toCSV(rows){
+  return rows.map(r=>r.map(v=>{
+    const s = String(v ?? '');
+    if(/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }).join(',')).join('\n');
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 250);
+}
+
+/* =========================
+   AUTH UI
+========================= */
+function setupAuthUI(){
+  $('show-signup').addEventListener('click', ()=>{
+    $('login-form').style.display='none';
+    $('signup-form').style.display='block';
+    showError('login-error',''); showError('signup-error','');
+  });
+  $('show-login').addEventListener('click', ()=>{
+    $('signup-form').style.display='none';
+    $('login-form').style.display='block';
+    showError('login-error',''); showError('signup-error','');
+  });
+
+  $('login-form-element').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const email = $('login-email').value.trim();
+    const pw = $('login-password').value;
+    try{
+      auth.login(email, pw);
+      UI.showMain();
+      bootstrapApp();
+      UI.showWorkspacePicker(); // prompt role selection on login for clarity
+    }catch(err){
+      showError('login-error', err.message);
     }
-  })();
-    </script>
-  </body>
+  });
+
+  $('signup-form-element').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const name = $('signup-name').value.trim();
+    const email = $('signup-email').value.trim();
+    const pw = $('signup-password').value;
+    const pw2 = $('signup-confirm-password').value;
+    try{
+      if(pw !== pw2) throw new Error('Passwords do not match');
+      auth.register(name, email, pw);
+      auth.login(email, pw);
+      UI.showMain();
+      bootstrapApp();
+      UI.showWorkspacePicker();
+    }catch(err){
+      showError('signup-error', err.message);
+    }
+  });
+}
+
+/* =========================
+   WORKSPACE PICKER UI
+========================= */
+$('workspace-btn').addEventListener('click', ()=>UI.showWorkspacePicker());
+$('workspace-close').addEventListener('click', ()=>UI.hideWorkspacePicker());
+$('workspace-desk').addEventListener('click', ()=>{
+  auth.setWorkspace('desk');
+  UI.hideWorkspacePicker();
+});
+$('workspace-field').addEventListener('click', ()=>{
+  auth.setWorkspace('field');
+  UI.hideWorkspacePicker();
+});
+
+/* =========================
+   BOOTSTRAP (guarded)
+========================= */
+let __booted = false;
+function bootstrapApp(){
+  if(__booted) return;
+  __booted = true;
+
+  $('print-btn').addEventListener('click', ()=>window.print());
+  $('logout-btn').addEventListener('click', ()=>{
+    if(confirm('Sign out?')) auth.logout();
+    __booted = false;
+  });
+
+  initTabs();
+  DeskUI.init();
+  FieldUI.init();
+  DataUI.init();
+
+  $('desk-open-route').addEventListener('click', ()=>DeskUI.openLatestRouteMap());
+  $('map-add-cust').addEventListener('click', ()=>ModalUI.openCustomer());
+
+  const state = loadState();
+  ensureActiveDma(state);
+  DeskUI.refreshDmaSelect();
+  DeskUI.loadActiveDmaToInputs();
+
+  if(!$('field-month').value) $('field-month').value = new Date().toISOString().slice(0,7);
+
+  UI.applyWorkspaceToNav();
+
+  DeskUI.recalcAll();
+  DashboardUI.refresh();
+}
+
+/* =========================
+   START
+========================= */
+setupAuthUI();
+const wasLoggedIn = auth.init();
+if(wasLoggedIn){
+  bootstrapApp();
+  // If user is logged in but workspace not set, prompt once
+  if(!auth.currentUser.workspace){
+    auth.currentUser.workspace = 'desk';
+    auth.persistUser();
+  }
+  UI.showWorkspacePicker();
+}
+</script>
+</body>
 </html>
