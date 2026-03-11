@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: OFORI Field-to-Desk DMA Mapping & NRW Analyzer
+message: If you use this software, please cite it.
+authors:
+  - family-names: Ofori Manu
+    given-names: Solomon
+date-released: 2026
+license: Proprietary
+abstract: A digital platform for monitoring water distribution systems and reducing Non-Revenue Water using District Metered Area analysis.
