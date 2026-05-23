@@ -727,7 +727,7 @@ All Rights Reserved
     const SUPABASE_URL = 'https://koopmffqocvyhnutzyuv.supabase.co';
 
     const SUPABASE_ANON_KEY =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtvb3BtZmZxb2N2eWhudXR6eXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDc4NDMsImV4cCI6MjA5NTA4Mzg0M30.1nwhX4B15ueaydNjpy4efqOsQ5KndnNrwhpSze4ffs4';
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtvb3BtZmZxb2N2eWhudXR6eXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDc4NDMsImV4cCI6MjA5NTA4Mzg0M30.1nwhX4B15ueaydNjpy4efqOsQ5Kn[...]
 
     const supabaseClient = window.supabase.createClient(
       SUPABASE_URL,
@@ -899,6 +899,92 @@ All Rights Reserved
     }
 
     /* =========================================================
+       AUTHENTICATION
+       ========================================================= */
+
+    function handleLoginSubmit(e){
+      e.preventDefault();
+      const email = $('login-email').value.trim();
+      const password = $('login-password').value.trim();
+      const errorDiv = $('login-error');
+
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      if(!email || !password){
+        errorDiv.textContent = 'Email and password are required.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      const session = {
+        email: email,
+        name: email.split('@')[0],
+        createdAt: new Date().toISOString()
+      };
+
+      saveSession(session);
+      initAppAfterAuth();
+      toast('Sign In Successful', `Welcome back, ${session.name}!`);
+    }
+
+    function handleSignupSubmit(e){
+      e.preventDefault();
+      const name = $('signup-name').value.trim();
+      const email = $('signup-email').value.trim();
+      const password = $('signup-password').value.trim();
+      const confirmPassword = $('signup-confirm-password').value.trim();
+      const errorDiv = $('signup-error');
+
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      if(!name || !email || !password || !confirmPassword){
+        errorDiv.textContent = 'All fields are required.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if(password.length < 6){
+        errorDiv.textContent = 'Password must be at least 6 characters.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if(password !== confirmPassword){
+        errorDiv.textContent = 'Passwords do not match.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      const session = {
+        email: email,
+        name: name,
+        createdAt: new Date().toISOString()
+      };
+
+      saveSession(session);
+      initAppAfterAuth();
+      toast('Account Created', `Welcome, ${name}!`);
+    }
+
+    function toggleAuthForm(){
+      const loginForm = $('login-form');
+      const signupForm = $('signup-form');
+
+      if(loginForm.style.display === 'none'){
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+      } else {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+      }
+
+      $('login-error').style.display = 'none';
+      $('signup-error').style.display = 'none';
+    }
+
+    /* =========================================================
        INIT AFTER AUTH
        ========================================================= */
     function initAppAfterAuth(){
@@ -934,6 +1020,11 @@ All Rights Reserved
           toast('Cloud Sync Failed', err.message || 'Unable to sync customers.');
         }
       });
+
+      $('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('ofori_session');
+        location.reload();
+      });
     }
 
     /* =========================================================
@@ -941,6 +1032,16 @@ All Rights Reserved
        ========================================================= */
     window.addEventListener('DOMContentLoaded', () => {
       const session = loadSession();
+
+      // Wire auth form handlers
+      $('login-form-element').addEventListener('submit', handleLoginSubmit);
+      $('signup-form-element').addEventListener('submit', handleSignupSubmit);
+      $('show-signup').addEventListener('click', toggleAuthForm);
+      $('show-login').addEventListener('click', toggleAuthForm);
+      $('toast-close').addEventListener('click', () => {
+        $('toast').style.display = 'none';
+      });
+
       if(session){
         initAppAfterAuth();
       } else {
